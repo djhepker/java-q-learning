@@ -98,22 +98,29 @@ public final class Agent {
     }
 
     /**
-     * Static method flags the Agent to push its newly learned values to memory storage. Must be called
+     * Static method flags the Agent to push all queued Q-values to memory storage. Must be called
      * at the end of every episode
-     *
      */
-    public static void finalizeQTableUpdate() {
+    public static void pushQTableUpdate() {
         Q_TABLE_MGR.updateData();
     }
 
     /**
-     * Safely closes the Agent's database. Call after finalizeQTableUpdate()
-     *
+     * Safely closes the Agent's database. To complete Episode, call after pushQTableUpdate()
      */
     public static void closeDatabase() {
         if (Q_TABLE_MGR != null) {
             Q_TABLE_MGR.close();
         }
+    }
+
+    /**
+     * Getter for retrieving the number of Q-values waiting to be stored into memory by pushQTableUpdate()
+     *
+     * @return Number of values cached waiting to be stored
+     */
+    public static int getCacheSize() {
+        return Q_TABLE_MGR.getQueuedValueCount();
     }
 
     /**
