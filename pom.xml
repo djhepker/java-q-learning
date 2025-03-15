@@ -7,10 +7,37 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>hepker.java-q-learning</groupId>
-    <artifactId>java-q-learning</artifactId>
+    <groupId>hepker.jql</groupId>
+    <artifactId>jql</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
+
+    <name>Java Q-learning</name>
+    <description>User-friendly Agent integration.
+        Allows creation of AI Agents, which comes with local database storage. Storage can be excluded
+    if user wishes to handle their own q-value storage.</description>
+    <url>https://github.com/djhepker/java-q-learning.git</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>djhepker</id>
+            <name>Hepker</name>
+            <email>djhepker@uiowa.edu</email>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/djhepker/java-q-learning.git</connection>
+        <developerConnection>scm:git:ssh://github.com/djhepker/java-q-learning.git</developerConnection>
+        <url>https://github.com/djhepker/java-q-learning.git</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>23</maven.compiler.source>

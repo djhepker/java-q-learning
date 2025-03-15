@@ -18,6 +18,10 @@ final class DataManager {
     private final ConcurrentHashMap<String, double[]> updatedQValues;
     private final QValueRepository db;
 
+    /**
+     * Constructor which is exclusively called by Agent's static instantiation. Safely instantiates a
+     * QValueRepository object, which contains SQLite access logic. Handles errors thrown by SQLite
+     */
     DataManager() {
         QValueRepository tempDb;
         try {
@@ -31,6 +35,13 @@ final class DataManager {
         this.updatedQValues = new ConcurrentHashMap<>();
     }
 
+    /**
+     * Retrieves the actionInt of the best possible action to take given state
+     *
+     * @param serialKey User-defined String representation of Agent's state
+     * @return Index of the best possible action to take in state represented by serialKey
+     * argument. If none is found, returns 0.0
+     */
     int getMaxQIndex(String serialKey) {
         try {
             return db.getMaxQAction(serialKey);
@@ -40,15 +51,29 @@ final class DataManager {
         }
     }
 
-    double queryQTableForValue(String serialKey, int decisionNumber) {
+    /**
+     * Retrieves, if it exists, the learned Q-value of the chosen actionInt given state serialKey
+     *
+     * @param serialKey User defined String representation of Agent's state
+     * @param actionInt The index of the action taken in state String serialKey. Typically, the return
+     *                  value of agentObject.getActionInt()
+     * @return  Q-value of actionInt given state String serialKey, else 0.0
+     */
+    double queryQTableForValue(String serialKey, int actionInt) {
         try {
-            return db.getQValueFromTable(serialKey, decisionNumber);
+            return db.getQValueFromTable(serialKey, actionInt);
         } catch (SQLException e) {
-            LOGGER.error("Failed to query Q value for serialKey: {}, decision: {}", serialKey, decisionNumber, e);
+            LOGGER.error("Failed to query Q value for serialKey: {}, decision: {}", serialKey, actionInt, e);
             return FAILURE_RETURN_VALUE;
         }
     }
 
+    /**
+     * From SQLite retrieves the maximum possible q-value given Agent's state
+     *
+     * @param serialKey User-defined String representation of Agent's state
+     * @return  Maximum learnt Q-value of any action taken by Agent in state serialKey
+     */
     double getMaxQValue(String serialKey) {
         try {
             return db.getMaxQValue(serialKey);
