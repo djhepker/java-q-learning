@@ -83,21 +83,31 @@ final class DataManager {
         }
     }
 
-    void putUpdatedValue(String serialKey, int index, double inputQ) {
+    /**
+     * Queues a Q-value to be inserted into database
+     *
+     * @param serialKey State of Agent
+     * @param actionIndex Index of Action given Agent's state
+     * @param inputQ The resulting Q-value of performing actionIndex in state serialKey
+     */
+    void putUpdatedValue(String serialKey, int actionIndex, double inputQ) {
         updatedQValues.compute(serialKey, (key, existingArray) -> {
             double[] resultArray;
             if (existingArray == null) {
-                resultArray = new double[index + 1];
-            } else if (index >= existingArray.length) {
-                resultArray = Arrays.copyOf(existingArray, index + 1);
+                resultArray = new double[actionIndex + 1];
+            } else if (actionIndex >= existingArray.length) {
+                resultArray = Arrays.copyOf(existingArray, actionIndex + 1);
             } else {
                 resultArray = existingArray.clone();
             }
-            resultArray[index] = inputQ;
+            resultArray[actionIndex] = inputQ;
             return resultArray;
         });
     }
 
+    /**
+     * Flushes queued values to the database
+     */
     void updateData() {
         try {
             Map<String, double[]> snapshot = new ConcurrentHashMap<>(updatedQValues);
@@ -111,6 +121,9 @@ final class DataManager {
         }
     }
 
+    /**
+     * Closes the database once all reads & writes have been finalized
+     */
     void close() {
         try {
             db.close();
