@@ -7,7 +7,17 @@ import lombok.Setter;
 import java.util.Random;
 
 /**
- * Class utilizes lombok @Getter, @Setter Member variables all have getters and setters
+ * Class utilizes lombok @Getter, @Setter Member variables all have getters and setters.
+ * All values can be mutated and obtained with their respective getters, setters. Member variables should
+ * not have values greater than 1.0 or lower than 0.0.<br>
+ * See README for instructions.<br>
+ *      - stateKey = null (String representation of Agent's state<br>
+ *      - gamma = 0.90 (How much the agent values learned information; delayed gratification vs instantaneous).<br>
+ *      - alpha = 0.82 (Rate at which Agent learns).<br>
+ *      - epsilon = 0.85 (Probability that Agent will select a random action).<br>
+ *      - rho = 0.0 (updated throughout training, set to 0.0 unless testing).<br>
+ *      - currentQ = 0.0 (updated by loadCurrentQ()).<br>
+ *      - maxQPrime = 0.0 (This is updated by calculateMaxQPrime()).<br>
  */
 @Getter
 @Setter
@@ -30,15 +40,6 @@ public final class Agent {
 
     /**
      * Empty default constructor for a new Agent. Member variables are initialized prior.<br>
-     * stateKey = null (You need to set this prior to calling updateQValue() or getActionInt()).<br>
-     * gamma = 0.90 (How much the agent values learned information; delayed gratification vs instantaneous).<br>
-     * alpha = 0.82 (Rate at which Agent learns).<br>
-     * epsilon = 0.85 (Probability that Agent will select a random action).<br>
-     * rho = 0.0 (updated throughout training, set to 0.0 unless testing).<br>
-     * currentQ = 0.0 (updated by loadCurrentQ()).<br>
-     * maxQPrime = 0.0 (This is updated by calculateMaxQPrime()).<br>
-     * All values can be mutated and obtained with their respective getters, setters<br>
-     *
      */
     public Agent() {
 

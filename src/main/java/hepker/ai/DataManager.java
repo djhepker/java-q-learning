@@ -2,12 +2,14 @@ package hepker.ai;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * Handles all interaction between Agent and SQLite.
+ */
 final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
     private static final String SQLKEY = "jdbc:sqlite:src/main/resources/data/q_values.db";
@@ -16,11 +18,11 @@ final class DataManager {
     private final ConcurrentHashMap<String, double[]> updatedQValues;
     private final QValueRepository db;
 
-    public DataManager() {
+    DataManager() {
         QValueRepository tempDb;
         try {
             tempDb = new QValueRepository(SQLKEY);
-            LOGGER.info("Successfully initialized QValueRepository with URL: {}", SQLKEY);
+            LOGGER.info("Initialized QValueRepository with URL: {}", SQLKEY);
         } catch (SQLException e) {
             LOGGER.error("Failed to initialize QValueRepository with URL: {}", SQLKEY, e);
             throw new RuntimeException("Database initialization failed", e);
@@ -29,7 +31,7 @@ final class DataManager {
         this.updatedQValues = new ConcurrentHashMap<>();
     }
 
-    public int getMaxQIndex(String serialKey) {
+    int getMaxQIndex(String serialKey) {
         try {
             return db.getMaxQAction(serialKey);
         } catch (SQLException e) {
@@ -38,7 +40,7 @@ final class DataManager {
         }
     }
 
-    public double queryQTableForValue(String serialKey, int decisionNumber) {
+    double queryQTableForValue(String serialKey, int decisionNumber) {
         try {
             return db.getQValueFromTable(serialKey, decisionNumber);
         } catch (SQLException e) {
@@ -47,7 +49,7 @@ final class DataManager {
         }
     }
 
-    public double getMaxQValue(String serialKey) {
+    double getMaxQValue(String serialKey) {
         try {
             return db.getMaxQValue(serialKey);
         } catch (SQLException e) {
@@ -56,7 +58,7 @@ final class DataManager {
         }
     }
 
-    public void putUpdatedValue(String serialKey, int index, double inputQ) {
+    void putUpdatedValue(String serialKey, int index, double inputQ) {
         updatedQValues.compute(serialKey, (key, existingArray) -> {
             double[] resultArray;
             if (existingArray == null) {
@@ -71,12 +73,12 @@ final class DataManager {
         });
     }
 
-    public void updateData() {
+    void updateData() {
         try {
             Map<String, double[]> snapshot = new ConcurrentHashMap<>(updatedQValues);
             if (!snapshot.isEmpty()) {
                 db.updateQTable(snapshot);
-                LOGGER.info("Successfully updated QTable with {} entries", updatedQValues.size());
+                LOGGER.info("Updated QTable with {} entries", updatedQValues.size());
                 updatedQValues.clear();
             }
         } catch (SQLException e) {
@@ -84,12 +86,12 @@ final class DataManager {
         }
     }
 
-    public void close() {
+    void close() {
         try {
             db.close();
-            LOGGER.info("Database connection pool closed successfully");
+            LOGGER.info("Database connection closed");
         } catch (SQLException e) {
-            LOGGER.error("Failed to close database connection pool", e);
+            LOGGER.error("Failed to close database connection", e);
         }
     }
 }
