@@ -131,7 +131,7 @@ final class DataManager {
     }
 
     /**
-     * Closes the database. Call once all reads & writes have been finalized
+     * Closes the database. Call once all reads and writes have been finalized
      */
     void close() {
         try {
