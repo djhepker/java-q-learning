@@ -106,6 +106,15 @@ final class DataManager {
     }
 
     /**
+     * Getter for retrieving the number of Q-values in cache waiting to be stored
+     *
+     * @return updatedQValues.size()
+     */
+    int getQueuedValueCount() {
+        return updatedQValues.size();
+    }
+
+    /**
      * Flushes queued values to the database
      */
     void updateData() {
@@ -122,7 +131,7 @@ final class DataManager {
     }
 
     /**
-     * Closes the database once all reads & writes have been finalized
+     * Closes the database. Call once all reads & writes have been finalized
      */
     void close() {
         try {
