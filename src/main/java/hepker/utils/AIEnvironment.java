@@ -3,7 +3,7 @@ package hepker.utils;
 /**
  * Outlines logic required by Agent for AI integration
  * */
-public interface DecisionHandler {
+public interface AIEnvironment {
 
     /**
      * Logic to retrieve the stateKey for categorizing Agent's learning

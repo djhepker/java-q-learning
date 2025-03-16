@@ -3,6 +3,7 @@ package hepker.ai;
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -27,6 +28,12 @@ final class QValueRepository {
      */
     QValueRepository(String url) throws SQLException {
         this.isInitialized = new AtomicBoolean(false);
+        String tmpDir = "target/sqlite-temp";
+        File tempDir = new File(tmpDir);
+        if (!tempDir.exists()) {
+            tempDir.mkdirs();
+        }
+        System.setProperty("org.sqlite.tmpdir", tmpDir);
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(url);
         config.setMaximumPoolSize(4);
@@ -36,7 +43,6 @@ final class QValueRepository {
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "250");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
-
         this.dataSource = new HikariDataSource(config);
         initializeDatabase();
     }
