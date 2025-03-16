@@ -16,7 +16,9 @@ To use Agent, you must perform the following:<br>
 11.    agentObject.learn(stateKeyPrime, actionInt)
 12. Repeat [1,11] until Episode is finished
 13. Agent.pushQTableUpdate()
-14. Agent.closeDataBase()
+14. Agent.closeDataBase()<br>
+
+Optionally, you may create a class to implement DecisionHandler interface, which will lay out the framework for required methods.
 
 Definitions:
 * STATE: A programmer-coded String value that is given to Agent to identify its learned values
