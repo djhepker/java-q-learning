@@ -9,7 +9,7 @@
 
     <groupId>hepker</groupId>
     <artifactId>jql</artifactId>
-    <version>1.0.0</version>
+    <version>0.3.0</version>
     <packaging>jar</packaging>
 
     <name>Java Q-learning</name>
