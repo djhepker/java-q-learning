@@ -1,9 +1,5 @@
 package hepker.ai;
 
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.Random;
 
 /**
@@ -19,10 +15,7 @@ import java.util.Random;
  *      - currentQ = 0.0 (updated by loadCurrentQ()).<br>
  *      - maxQPrime = 0.0 (This is updated by calculateMaxQPrime()).<br>
  */
-@Getter
-@Setter
 public final class Agent {
-    @Getter(AccessLevel.NONE) @Setter(AccessLevel.NONE)
     private static final DataManager Q_TABLE_MGR;
 
     static {
@@ -121,6 +114,101 @@ public final class Agent {
      */
     public static int getCacheSize() {
         return Q_TABLE_MGR.getQueuedValueCount();
+    }
+
+    /**
+     * Gets the gamma value.
+     *
+     * @return The gamma value held by Agent
+     */
+    public double getGamma() {
+        return gamma;
+    }
+
+    /**
+     * Sets the inputGamma value. Gamma is the value Agent has for delayed gratification opposed to
+     * instant gratification. At 1.0, Agent fully values learned knowledge. With low values, Agent becomes
+     * myopic, and will tend to make decisions that pay off short-term opposed to long-term
+     *
+     * @param inputGamma the new inputGamma value.
+     */
+    public void setGamma(double inputGamma) {
+        this.gamma = inputGamma;
+    }
+
+    /**
+     * Gets the alpha value.
+     *
+     * @return the alpha held by Agent
+     */
+    public double getAlpha() {
+        return alpha;
+    }
+
+    /**
+     * Sets the inputAlpha value. Alpha is the
+     *
+     * @param inputAlpha the new inputAlpha value.
+     */
+    public void setAlpha(double inputAlpha) {
+        this.alpha = inputAlpha;
+    }
+
+    /**
+     * Gets the epsilon value.
+     *
+     * @return the epsilon value held by Agent
+     */
+    public double getEpsilon() {
+        return epsilon;
+    }
+
+    /**
+     * Sets Epsilon to inputEpsilon. Epsilon is the Probability Agent will make a random decision.
+     * Set to 1.0 for a perfectly stochastic Agent, which only makes random decisions
+     *
+     * @param updatedEpsilon the new updatedEpsilon value.
+     */
+    public void setEpsilon(double updatedEpsilon) {
+        this.epsilon = updatedEpsilon;
+    }
+
+    /**
+     * Gets the rho value
+     *
+     * @return The rho value, which is used in learning calculations of Agent
+     */
+    public double getRho() {
+        return rho;
+    }
+
+    /**
+     * Mutator for rho, the reward given to Agent for performing 'action' in 'state'.
+     * Used in learning calculates of Agent
+     *
+     * @param updatedRho the new updatedRho value.
+     */
+    public void setRho(double updatedRho) {
+        this.rho = updatedRho;
+    }
+
+    /**
+     * Mutator for updating Agent's stateKey to a new value. developer may want to ensure values
+     * are non-exploitable before sending them to Agent for database storage
+     *
+     * @param argStateKey The object stateKey will point to on resolution
+     */
+    public void setStateKey(String argStateKey) {
+        this.stateKey = argStateKey;
+    }
+
+    /**
+     * Getter function for String stateKey, which must be set by the developer beforehand
+     *
+     * @return String stateKey
+     */
+    public String getStateKey() {
+        return stateKey;
     }
 
     /**
