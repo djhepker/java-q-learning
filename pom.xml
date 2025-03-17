@@ -7,15 +7,14 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.hepker</groupId>
-    <artifactId>jql</artifactId>
-    <version>0.3.0</version>
-    <packaging>jar</packaging>
+    <groupId>io.github.djhepker</groupId>
+    <artifactId>com.hepker.jql</artifactId>
+    <description>User-friendly Agent integration. Allows creation of AI Agents for Q-learning.
+        Comes with Database logic for Q-value storage. </description>
 
+    <version>v0.3.2</version>
+    <packaging>jar</packaging>
     <name>Java Q-learning</name>
-    <description>User-friendly Agent integration.
-        Allows creation of AI Agents, which comes with local database storage. Storage can be excluded
-    if user wishes to handle their own q-value storage.</description>
     <url>https://github.com/djhepker/java-q-learning.git</url>
 
     <licenses>
@@ -48,19 +47,13 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>Github djhepker Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/djhepker/java-q-learning</url>
+            <id>central</id>
+            <name>Sonatype Nexus Staging</name>
+            <url>https://oss.sonatype.org/content/repositories/staging</url>
         </repository>
     </distributionManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
-            <scope>provided</scope>
-        </dependency>
         <!-- Note Hikari implements slf4j -->
         <dependency>
             <groupId>com.zaxxer</groupId>
@@ -73,8 +66,39 @@
             <version>3.49.1.0</version>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
+            <!-- Sonatype -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                </configuration>
+            </plugin>
+            <!-- gpg enablement -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <configuration>
+                    <passphraseServerId>jql-gpg</passphraseServerId>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Attach the Javadoc jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -103,25 +127,18 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Maven plugins -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>3.14.0</version>
-                <configuration>
-                    <annotationProcessorPaths>
-                        <annotationProcessorPath>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok</artifactId>
-                            <version>1.18.36</version>
-                        </annotationProcessorPath>
-                    </annotationProcessorPaths>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.2</version>
             </plugin>
+            <!-- Enforcer -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
