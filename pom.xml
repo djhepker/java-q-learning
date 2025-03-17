@@ -48,11 +48,21 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
+    <!-- Begin Sonatype package logic -->
+<!--    <distributionManagement>-->
+<!--        <repository>-->
+<!--            <id>central</id>-->
+<!--            <name>Sonatype Nexus Staging</name>-->
+<!--            <url>https://oss.sonatype.org/content/repositories/staging</url>-->
+<!--        </repository>-->
+<!--    </distributionManagement>-->
+
+    <!-- Begin Github Package Logic -->
     <distributionManagement>
         <repository>
-            <id>central</id>
-            <name>Sonatype Nexus Staging</name>
-            <url>https://oss.sonatype.org/content/repositories/staging</url>
+            <id>github</id>
+            <name>Github djhepker Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/djhepker/java-q-learning</url>
         </repository>
     </distributionManagement>
 
