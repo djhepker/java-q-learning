@@ -83,7 +83,7 @@
     <build>
         <plugins>
             <!-- Sonatype Central Publishing Plugin -->
-            <plugin>
+<!--             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
                 <version>0.7.0</version>
@@ -93,7 +93,7 @@
                     <autoPublish>true</autoPublish>
                     <waitUntil>published</waitUntil>
                 </configuration>
-            </plugin>
+            </plugin> -->
             <!-- Attach the Javadoc jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
