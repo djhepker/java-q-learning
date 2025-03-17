@@ -50,7 +50,6 @@
             <id>central</id>
             <name>Sonatype Nexus Staging</name>
             <url>https://oss.sonatype.org/content/repositories/staging</url>
-<!--            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
         </repository>
     </distributionManagement>
 
@@ -128,7 +127,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <!-- Maven plugins plugin -->
+            <!-- Maven plugins -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
