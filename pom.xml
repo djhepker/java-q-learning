@@ -9,7 +9,7 @@
 
     <groupId>hepker</groupId>
     <artifactId>jql</artifactId>
-    <version>0.3.0</version>
+    <version>0.3.1</version>
     <packaging>jar</packaging>
 
     <name>Java Q-learning</name>
@@ -73,8 +73,54 @@
             <version>3.49.1.0</version>
         </dependency>
     </dependencies>
+
     <build>
         <plugins>
+            <!-- gpg enablement -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.6</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- deploy delegation plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>3.1.4</version>
+                <executions>
+                    <execution>
+                        <id>github</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                        <configuration>
+                            <repositoryId>github</repositoryId>
+                            <url>https://maven.pkg.github.com/djhepker/java-q-learning</url>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>ossrh</id>
+                        <phase>deploy</phase>
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>
+                        <configuration>
+                            <repositoryId>ossrh</repositoryId>
+                            <url>https://oss.sonatype.org/content/repositories/staging/</url>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <!-- Attach the Javadoc jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -103,6 +149,7 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- Maven plugins plugin -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
