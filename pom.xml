@@ -2,17 +2,16 @@
 <project
         xmlns="http://maven.apache.org/POM/4.0.0"
         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
-                        http://maven.apache.org/xsd/maven-4.0.0.xsd">
+        xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.djhepker</groupId>
     <artifactId>com.hepker.jql</artifactId>
     <description>User-friendly Agent integration. Allows creation of AI Agents for Q-learning.
-        Comes with Database logic for Q-value storage. </description>
+        Comes with Database logic for Q-value storage.</description>
 
-    <version>v0.3.2</version>
+    <version>v0.3.3</version>
     <packaging>jar</packaging>
     <name>Java Q-learning</name>
     <url>https://github.com/djhepker/java-q-learning.git</url>
@@ -29,6 +28,10 @@
             <id>djhepker</id>
             <name>Hepker</name>
             <email>djhepker@uiowa.edu</email>
+            <roles>
+                <role>Lead Architect</role>
+                <role>Maintainer</role>
+            </roles>
         </developer>
     </developers>
 
@@ -69,7 +72,7 @@
 
     <build>
         <plugins>
-            <!-- Sonatype -->
+            <!-- Sonatype Central Publishing Plugin -->
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
@@ -81,29 +84,11 @@
                     <waitUntil>published</waitUntil>
                 </configuration>
             </plugin>
-            <!-- gpg enablement -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
-                <configuration>
-                    <passphraseServerId>jql-gpg</passphraseServerId>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
             <!-- Attach the Javadoc jar -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.1</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
