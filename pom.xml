@@ -48,9 +48,10 @@
 
     <distributionManagement>
         <repository>
-            <id>github</id>
-            <name>Github djhepker Apache Maven Packages</name>
-            <url>https://maven.pkg.github.com/djhepker/java-q-learning</url>
+            <id>central</id>
+            <name>Sonatype Nexus Staging</name>
+            <url>https://oss.sonatype.org/content/repositories/staging</url>
+<!--            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>-->
         </repository>
     </distributionManagement>
 
@@ -70,6 +71,18 @@
 
     <build>
         <plugins>
+            <!-- Sonatype -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                </configuration>
+            </plugin>
             <!-- gpg enablement -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -85,36 +98,6 @@
                         <goals>
                             <goal>sign</goal>
                         </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <!-- deploy delegation plugin -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.1.4</version>
-                <executions>
-                    <execution>
-                        <id>github</id>
-                        <phase>deploy</phase>
-                        <goals>
-                            <goal>deploy</goal>
-                        </goals>
-                        <configuration>
-                            <repositoryId>github</repositoryId>
-                            <url>https://maven.pkg.github.com/djhepker/java-q-learning</url>
-                        </configuration>
-                    </execution>
-                    <execution>
-                        <id>ossrh</id>
-                        <phase>deploy</phase>
-                        <goals>
-                            <goal>deploy</goal>
-                        </goals>
-                        <configuration>
-                            <repositoryId>ossrh</repositoryId>
-                            <url>https://oss.sonatype.org/content/repositories/staging/</url>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>
@@ -157,6 +140,7 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.2</version>
             </plugin>
+            <!-- Enforcer -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
