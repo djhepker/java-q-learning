@@ -18,7 +18,7 @@ To use Agent, you must perform the following:<br>
 13. Agent.pushQTableUpdate()
 14. Agent.closeDataBase()<br>
 
-Optionally, you may create a class to implement DecisionHandler interface, which will lay out the framework for required methods.
+Optionally, you may create a class to implement AIEnvironment interface, which will lay out the framework for required methods.
 
 Definitions:
 * STATE: A programmer-coded String value that is given to Agent to identify its learned values
