@@ -7,15 +7,14 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.hepker</groupId>
-    <artifactId>jql</artifactId>
-    <version>0.3.1</version>
-    <packaging>jar</packaging>
+    <groupId>io.github.djhepker</groupId>
+    <artifactId>com.hepker.jql</artifactId>
+    <description>User-friendly Agent integration. Allows creation of AI Agents for Q-learning.
+        Comes with Database logic for Q-value storage. </description>
 
+    <version>0.3.2</version>
+    <packaging>jar</packaging>
     <name>Java Q-learning</name>
-    <description>User-friendly Agent integration.
-        Allows creation of AI Agents, which comes with local database storage. Storage can be excluded
-    if user wishes to handle their own q-value storage.</description>
     <url>https://github.com/djhepker/java-q-learning.git</url>
 
     <licenses>
