@@ -44,8 +44,8 @@
     </scm>
 
     <properties>
-        <maven.compiler.source>23</maven.compiler.source>
-        <maven.compiler.target>23</maven.compiler.target>
+        <maven.compiler.source>24</maven.compiler.source>
+        <maven.compiler.target>24</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
@@ -79,6 +79,13 @@
             <groupId>org.xerial</groupId>
             <artifactId>sqlite-jdbc</artifactId>
             <version>3.49.1.0</version>
+        </dependency>
+        <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.12.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -150,7 +157,7 @@
                         <configuration>
                             <rules>
                                 <requireJavaVersion>
-                                    <version>[21,24)</version>
+                                    <version>[24)</version>
                                 </requireJavaVersion>
                                 <requireMavenVersion>
                                     <version>[3.8,)</version>

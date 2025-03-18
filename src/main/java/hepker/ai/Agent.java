@@ -51,6 +51,15 @@ public final class Agent {
     }
 
     /**
+     * Specialized constructor for setting the exploration rate, epsilon, at initialization
+     *
+     * @param inputEpsilon The probability Agent will make a random move opposed to a move based on knowledge
+     */
+    public Agent(double inputEpsilon) {
+        this.epsilon = inputEpsilon;
+    }
+
+    /**
      * Queues State Action pair to be placed into SQLite table
      *
      * @param stateKeyPrime The post-action encrypted state. Be sure to update your stateKey, post
@@ -58,7 +67,7 @@ public final class Agent {
      * @param actionChoiceInt The index of the decision which resulted in stateKeyPrime. Should be
      *                        the return value of getActionInt()
      */
-    public void learn(String stateKeyPrime, int actionChoiceInt) {
+    public void processData(String stateKeyPrime, int actionChoiceInt) {
         calculateMaxQPrime(stateKeyPrime);
         updateQValue(actionChoiceInt);
     }
@@ -188,7 +197,7 @@ public final class Agent {
      *
      * @param updatedRho the new updatedRho value.
      */
-    public void setRho(double updatedRho) {
+    public void giveReward(double updatedRho) {
         this.rho = updatedRho;
     }
 
