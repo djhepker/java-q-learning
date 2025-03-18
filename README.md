@@ -1,6 +1,6 @@
 # Java Q-Learning
 
-[What do I do to use this in my code?](https://github.com/djhepker/java-q-learning/wiki)
+[What do I do to use this in my code?](https://github.com/djhepker/java-q-learning/wiki## What do I do?)
 
 Definitions:
 * STATE: A programmer-coded String value that is given to Agent to identify its learned values
