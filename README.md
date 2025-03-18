@@ -1,24 +1,6 @@
 # Java Q-Learning
 
-Starting out, you should create a helper class and implement AIEnvironment interface to import required methods.
-
-To use Agent, you must perform the following:<br>
-1.    String yourStateString = AIEnvironment.generateStateKey()
-2.   agentObject.setStateKey(yourStateString)
-3.  AIEnvironment.updateDecisionContainer()
-4.   int numDecisions = yourDecisionContainer.getNumDecisions()
-5.    int action = agentObject.getActionInt(numDecisions)
-6.   AIEnvironment.performAction(actionInt)
-7.  AIEnvironment.updateDecisionContainer()
-8. String stateKeyPrime = AIEnvironment.generateStateKey()
-9.  double yourCustomReward = AIEnvironment.getDecisionReward()
-10.   agentObject.setRho(yourCustomReward)
-11.    agentObject.learn(stateKeyPrime, actionInt)
-12. Repeat [1,11] until Episode is finished
-13. Agent.pushQTableUpdate()
-14. Agent.closeDataBase()<br>
-
-Optionally, you may create a class to implement AIEnvironment interface, which will lay out the framework for required methods.
+[What do I do to use this in my code?](https://github.com/djhepker/java-q-learning/wiki)
 
 Definitions:
 * STATE: A programmer-coded String value that is given to Agent to identify its learned values
