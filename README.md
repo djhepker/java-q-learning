@@ -1,4 +1,4 @@
-# Java Q-Learning
+# Welcome to Java Q-Learning!
 
 * [How do I import this?](https://github.com/djhepker/java-q-learning/wiki#how-do-i-import-this-project-into-my-code)
 
