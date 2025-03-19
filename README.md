@@ -4,6 +4,4 @@
 
 * [What do I do to use this in my code?](https://github.com/djhepker/java-q-learning/wiki#what-do-i-do)
 
-* [Definitions](https://github.com/djhepker/java-q-learning/wiki/Home##Definitions)
-
-* 
+* [Definitions](https://github.com/djhepker/java-q-learning/wiki#definitions)
