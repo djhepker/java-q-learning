@@ -3,27 +3,27 @@ package hepker.ai;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static final int STRING_KEY_MAX_LEN = 100;
 
-    private static Database dataStore;
+    private final Database dataStore;
     private static int batchSize = 100;
 
     private DataNode head;
     private DataNode tail;
 
-    private int listSize;
+    private int cacheSize;
 
     DataManager() {
         Database tmpDb;
         try {
             tmpDb = new Database();
             LOGGER.info("Initialized database successfully");
-            this.listSize = 0;
+            this.cacheSize = 0;
             this.head = null;
             this.tail = null;
         } catch (Exception e) {
@@ -34,11 +34,57 @@ class DataManager {
     }
 
     /**
+     * Queries database for the given state-action pair
+     *
+     * @param key String representation of Agent's state
+     * @param actionIndex Index of the action taken by Agent
+     * @return Value of performing action actionIndex in state key. Returns 0.0 if not found
+     */
+    double queryValue(String key, int actionIndex) {
+        if (true) {
+            // retrieve through bridge logic, return value
+        }
+        return 0.0;
+    }
+
+    /**
+     * Queries and retrieves the maximum Q-value given a String representation of Agent's state
+     *
+     * @param key String representation of Agent's state
+     * @return The maximum held Q-value of the state
+     */
+    double getMaxQValue(String key) {
+        // retrieve through bridge logic
+        return 0.0;
+    }
+
+    /**
+     * Queries and retrieves action index of the maximum Q-value given a String representation of Agent's state
+     *
+     * @param key String representation of Agent's state
+     * @return Index of the maximum held Q-value of the state
+     */
+    int getMaxQIndex(String key) {
+       // retrieve through bridge logic
+        return 0;
+    }
+
+    /**
+     * Retrieves the number of DataNodes stored in memory. Size is a member variable int, adjusted with
+     * all list operations
+     *
+     * @return cacheSize Counter of DataNodes being tracked
+     */
+    int getCacheSize() {
+        return cacheSize;
+    }
+
+    /**
      * Sets the exclusive quantity of nodes allowed to be queued for database storage. Default 100
      *
      * @param batchSize The exclusive maximum number of nodes to be stored in cache
      */
-    static void setBatchSize(int batchSize) {
+    void setBatchSize(int batchSize) {
         DataManager.batchSize = batchSize;
     }
 
@@ -59,7 +105,7 @@ class DataManager {
             head = new DataNode(dataArr, null);
             tail = head;
         }
-        if (++listSize >= batchSize) {
+        if (++cacheSize >= batchSize) {
             pushData();
         }
     }
@@ -73,7 +119,7 @@ class DataManager {
      * @return byte[] of input arguments in order of
      */
     private byte[] convertTupleToBytes(int actionIndex, String key, double value) {
-        if (key.length() > STRING_KEY_MAX_LEN) {
+        if (key.length() > 100) {
             throw new RuntimeException(String.format("StateKey is too long: %s", key.length()));
         }
         byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
@@ -95,14 +141,18 @@ class DataManager {
         // push logic here
         head = null;
         tail = null;
-        listSize = 0;
+        cacheSize = 0;
     }
 
     /**
      * Closes db once finalized
      */
-    static void close() {
-        dataStore.close();
+    void close() {
+        try {
+            dataStore.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to close database", e);
+        }
     }
 
     /**
