@@ -8,16 +8,16 @@ public class ByteBufferPool {
 
     public ByteBufferPool(int initialSize) {
         for (int i = 0; i < initialSize; i++) {
-            pool.add(ByteBuffer.allocateDirect(1024 * 1024)); // Example: 1MB buffers
+            pool.add(ByteBuffer.allocateDirect(1024));
         }
     }
 
     public ByteBuffer getBuffer() {
-        return pool.poll() != null ? pool.poll() : ByteBuffer.allocateDirect(1024 * 1024);
+        return pool.poll() != null ? pool.poll() : ByteBuffer.allocateDirect(1024);
     }
 
     public void returnBuffer(ByteBuffer buffer) {
-        buffer.clear(); // Reset buffer state
+        buffer.clear();
         pool.add(buffer);
     }
 }

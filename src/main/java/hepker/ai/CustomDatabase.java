@@ -35,6 +35,7 @@ public class CustomDatabase {
     private static final int DOUBLE_LONG_BYTES = 8;
 
     private final AtomicBoolean isInitialized;
+    private final ByteBufferPool bufferPool;
 
     private RandomAccessFile dataStore;
     private FileChannel dataChannel;
@@ -49,6 +50,7 @@ public class CustomDatabase {
      */
     public CustomDatabase() throws IOException {
         this.isInitialized = new AtomicBoolean(false);
+        this.bufferPool = new ByteBufferPool(10);
         initializeDatabase();
     }
 
@@ -163,12 +165,14 @@ public class CustomDatabase {
 
         // int numkeys, int numInvalid, long[32] (indices)
         int initialIndices = 32;
-        ByteBuffer header = ByteBuffer.allocate(INT_BYTES + DOUBLE_LONG_BYTES * initialIndices + INT_BYTES);
+        ByteBuffer header = bufferPool.getBuffer();
         header.putInt(0);
         header.putInt(0);
         for (int i = 0; i < initialIndices; i++) {
             header.putLong(0);
         }
+        header.flip();
         writeData(header, indexChannel, 0);
+        bufferPool.returnBuffer(header);
     }
 }
