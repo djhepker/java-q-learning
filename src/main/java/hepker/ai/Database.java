@@ -30,7 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Handles all write and read calls to .dat files
  */
-public class CustomDatabase {
+class Database {
     private static final int INT_BYTES = 4;
     private static final int DOUBLE_LONG_BYTES = 8;
 
@@ -48,7 +48,7 @@ public class CustomDatabase {
      *
      * @throws IOException Failed to instantiate Database file
      */
-    public CustomDatabase() throws IOException {
+    Database() throws IOException {
         this.isInitialized = new AtomicBoolean(false);
         this.bufferPool = new ByteBufferPool(10);
         initializeDatabase();
@@ -62,7 +62,7 @@ public class CustomDatabase {
      * @param initIndex The position in the file to start writing from
      * @throws IOException Thrown if interrupted while writing
      */
-    public void writeData(ByteBuffer dataBuffer, FileChannel channel, long initIndex) throws IOException {
+    void writeData(ByteBuffer dataBuffer, FileChannel channel, long initIndex) throws IOException {
         channel.position(initIndex); // Set position to specified index
         dataBuffer.flip();
         while (dataBuffer.hasRemaining()) {
@@ -75,12 +75,22 @@ public class CustomDatabase {
      *
      * @throws IOException Thrown if interrupted while reading
      */
-    public double getValue(byte[] key, int actionIndex) throws IOException {
+    double getValue(byte[] key, int actionIndex) throws IOException {
         int keyLength = key.length;
         int numIndicies = getDataInt(indexChannel, ByteBuffer.allocate(4), 0);
         long lockIndex = getLockIndex(keyLength, key);
 
         return 0.0;
+    }
+
+    /**
+     * Closes the database. Call once all reads and writes have been finalized
+     */
+    void close() throws IOException {
+        dataStore.close();
+        indexStore.close();
+        dataChannel.close();
+        indexChannel.close();
     }
 
     private long getLockIndex(int keyLength, byte[] key) throws IOException {
@@ -112,16 +122,6 @@ public class CustomDatabase {
         channel.position(initIndex);
         channel.read(buffer);
         return buffer.getInt();
-    }
-
-    /**
-     * Closes the database. Call once all reads and writes have been finalized
-     */
-    public void close() throws IOException {
-        dataStore.close();
-        indexStore.close();
-        dataChannel.close();
-        indexChannel.close();
     }
 
     /**

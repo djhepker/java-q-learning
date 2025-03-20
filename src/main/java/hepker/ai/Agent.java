@@ -104,7 +104,7 @@ public final class Agent {
      * at the end of every episode
      */
     public static void pushQTableUpdate() {
-        Q_TABLE_MGR.updateData();
+        Q_TABLE_MGR.pushData();
     }
 
     /**

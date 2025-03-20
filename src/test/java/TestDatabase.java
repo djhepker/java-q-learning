@@ -1,4 +1,4 @@
-import hepker.ai.CustomDatabase;
+import hepker.ai.Database;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +17,7 @@ class TestDatabase {
 
     @Test
     void testIntialize() throws Exception {
-        CustomDatabase db = new CustomDatabase();
+        Database db = new Database();
         db.close();
         File valueData = new File(dataPath + "/q_values.dat");
         File indexData = new File(dataPath + "/index_values.dat");

@@ -2,143 +2,117 @@ package hepker.ai;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import java.sql.SQLException;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-/**
- * Handles all interaction between Agent and SQLite.
- */
-final class DataManager {
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+
+class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static final String SQLKEY = "jdbc:sqlite:src/main/resources/q_values.db";
-    private static final double FAILURE_RETURN_VALUE = 0.0;
+    private static final int STRING_KEY_MAX_LEN = 100;
 
-    private final ConcurrentHashMap<String, double[]> updatedQValues;
-    private final QValueRepository db;
+    private static Database dataStore;
+    private static int batchSize = 100;
 
-    /**
-     * Constructor which is exclusively called by Agent's static instantiation. Safely instantiates a
-     * QValueRepository object, which contains SQLite access logic. Handles errors thrown by SQLite
-     */
+    private DataNode head;
+    private DataNode tail;
+
+    private int listSize;
+
     DataManager() {
-        QValueRepository tempDb;
+        Database tmpDb;
         try {
-            tempDb = new QValueRepository(SQLKEY);
-            LOGGER.info("Initialized QValueRepository with URL: {}", SQLKEY);
-        } catch (SQLException e) {
-            LOGGER.error("Failed to initialize QValueRepository with URL: {}", SQLKEY, e);
-            throw new RuntimeException("Database initialization failed", e);
+            tmpDb = new Database();
+            LOGGER.info("Initialized database successfully");
+            this.listSize = 0;
+            this.head = null;
+            this.tail = null;
+        } catch (Exception e) {
+            LOGGER.error("Failed to initialize database", e);
+            throw new RuntimeException("Failed to initialize database", e);
         }
-        this.db = tempDb;
-        this.updatedQValues = new ConcurrentHashMap<>();
+        dataStore = tmpDb;
     }
 
     /**
-     * Retrieves the actionInt of the best possible action to take given state
+     * Sets the exclusive quantity of nodes allowed to be queued for database storage. Default 100
      *
-     * @param serialKey User-defined String representation of Agent's state
-     * @return Index of the best possible action to take in state represented by serialKey
-     * argument. If none is found, returns 0.0
+     * @param batchSize The exclusive maximum number of nodes to be stored in cache
      */
-    int getMaxQIndex(String serialKey) {
-        try {
-            return db.getMaxQAction(serialKey);
-        } catch (SQLException e) {
-            LOGGER.error("Failed to get max Q index for serialKey: {}", serialKey, e);
-            return (int) FAILURE_RETURN_VALUE;
-        }
+    static void setBatchSize(int batchSize) {
+        DataManager.batchSize = batchSize;
     }
 
     /**
-     * Retrieves, if it exists, the learned Q-value of the chosen actionInt given state serialKey
+     * Queues up data for addition to the database. Stored as a singly linked-list. String key must not exceed
+     * a length of 100 characters. Will throw a RuntimeException in such a case
      *
-     * @param serialKey User defined String representation of Agent's state
-     * @param actionInt The index of the action taken in state String serialKey. Typically, the return
-     *                  value of agentObject.getActionInt()
-     * @return  Q-value of actionInt given state String serialKey, else 0.0
+     * @param key String representation of world state
+     * @param actionIndex Chosen action in given world state
+     * @param value Value of making action in state key
      */
-    double queryQTableForValue(String serialKey, int actionInt) {
-        try {
-            return db.getQValueFromTable(serialKey, actionInt);
-        } catch (SQLException e) {
-            LOGGER.error("Failed to query Q value for serialKey: {}, decision: {}", serialKey, actionInt, e);
-            return FAILURE_RETURN_VALUE;
+    void queueData(String key, int actionIndex, double value) {
+        byte[] dataArr = convertTupleToBytes(actionIndex, key, value);
+
+        if (head != null) {
+            tail = new DataNode(dataArr, tail);
+        } else {
+            head = new DataNode(dataArr, null);
+            tail = head;
+        }
+        if (++listSize >= batchSize) {
+            pushData();
         }
     }
 
     /**
-     * From SQLite retrieves the maximum possible q-value given Agent's state
+     * Converts data to a byte[]. keylength, key, action index, value
      *
-     * @param serialKey User-defined String representation of Agent's state
-     * @return  Maximum learnt Q-value of any action taken by Agent in state serialKey
+     * @param actionIndex Chosen action in given world state
+     * @param key String representation of world state
+     * @param value Value of making action in state key
+     * @return byte[] of input arguments in order of
      */
-    double getMaxQValue(String serialKey) {
-        try {
-            return db.getMaxQValue(serialKey);
-        } catch (SQLException e) {
-            LOGGER.error("Failed to get max Q value for serialKey: {}", serialKey, e);
-            return FAILURE_RETURN_VALUE;
+    private byte[] convertTupleToBytes(int actionIndex, String key, double value) {
+        if (key.length() > STRING_KEY_MAX_LEN) {
+            throw new RuntimeException(String.format("StateKey is too long: %s", key.length()));
         }
+        byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
+        short keyLength = (short) keyBytes.length;
+        ByteBuffer byteBuffer = ByteBuffer.allocate(2 + keyLength + 4 + 8);
+        byteBuffer.putShort(keyLength);
+        byteBuffer.put(keyBytes);
+        byteBuffer.putInt(actionIndex);
+        byteBuffer.putDouble(value);
+
+        return byteBuffer.array();
     }
 
     /**
-     * Queues a Q-value to be inserted into database
+     * Pushes all queued data to the database, eliminating cached nodes
      *
-     * @param serialKey State of Agent
-     * @param actionIndex Index of Action given Agent's state
-     * @param inputQ The resulting Q-value of performing actionIndex in state serialKey
      */
-    void putUpdatedValue(String serialKey, int actionIndex, double inputQ) {
-        updatedQValues.compute(serialKey, (key, existingArray) -> {
-            double[] resultArray;
-            if (existingArray == null) {
-                resultArray = new double[actionIndex + 1];
-            } else if (actionIndex >= existingArray.length) {
-                resultArray = Arrays.copyOf(existingArray, actionIndex + 1);
-            } else {
-                resultArray = existingArray.clone();
-            }
-            resultArray[actionIndex] = inputQ;
-            return resultArray;
-        });
+    void pushData() {
+        // push logic here
+        head = null;
+        tail = null;
+        listSize = 0;
     }
 
     /**
-     * Getter for retrieving the number of Q-values in cache waiting to be stored
+     * Closes db once finalized
+     */
+    static void close() {
+        dataStore.close();
+    }
+
+    /**
+     * Node in singly linked-list which contains a statekey, index action, value, and a link
+     * to the next node in the list
      *
-     * @return updatedQValues.size()
+     * @param dataBytes byte[] of the data to be stored in the db
+     * @param next The next DataNode. Null if this node is the head node
      */
-    int getQueuedValueCount() {
-        return updatedQValues.size();
-    }
+    record DataNode(byte[] dataBytes, DataNode next) {
 
-    /**
-     * Flushes queued values to the database
-     */
-    void updateData() {
-        try {
-            Map<String, double[]> snapshot = new ConcurrentHashMap<>(updatedQValues);
-            if (!snapshot.isEmpty()) {
-                db.updateQTable(snapshot);
-                LOGGER.info("Updated QTable with {} entries", updatedQValues.size());
-                updatedQValues.clear();
-            }
-        } catch (SQLException e) {
-            LOGGER.error("Failed to update QTable with {} entries", updatedQValues.size(), e);
-        }
-    }
-
-    /**
-     * Closes the database. Call once all reads and writes have been finalized
-     */
-    void close() {
-        try {
-            db.close();
-            LOGGER.info("Database connection closed");
-        } catch (SQLException e) {
-            LOGGER.error("Failed to close database connection", e);
-        }
     }
 }
