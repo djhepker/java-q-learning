@@ -12,7 +12,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static final String SQLKEY = "jdbc:sqlite:src/main/resources/data/q_values.db";
+    private static final String SQLKEY = "jdbc:sqlite:src/main/resources/q_values.db";
     private static final double FAILURE_RETURN_VALUE = 0.0;
 
     private final ConcurrentHashMap<String, double[]> updatedQValues;

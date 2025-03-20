@@ -36,7 +36,6 @@ class TestAgent {
         try (DirectoryStream<Path> stream = Files.newDirectoryStream(directoryPath, "*.db")) {
             for (Path file : stream) {
                 Files.delete(file);
-                System.out.println("File deleted: " + file);
             }
         }
     }
