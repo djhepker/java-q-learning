@@ -7,6 +7,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /*
@@ -75,25 +76,35 @@ final class Database {
         FileChannel dataChannel = new RandomAccessFile(dataFilePath, "rw").getChannel();
         int keyLength = key.length;
         ByteBuffer dataBuffer = bufferPool.getBuffer();
-        int numIndicies = getDataInt(dataChannel, dataBuffer, 0);
-        long lockIndex = getLockIndex(keyLength, key);
 
-        return 0.0;
-    }
+        dataChannel.position(offset);
+        dataChannel.read(dataBuffer);
+        dataBuffer.flip();
 
-    /**
-     * Reads byte data from the given file at the specified position
-     *
-     * @param channel   Channel used to read from the file
-     * @param buffer    ByteBuffer to store the read data
-     * @param initIndex  The position in the file to start reading from
-     * @throws IOException Thrown if interrupted while reading
-     * @return Int from file
-     */
-    int getDataShort(FileChannel channel, ByteBuffer buffer, long initIndex) throws IOException {
-        channel.position(initIndex);
-        channel.read(buffer);
-        return buffer.getShort();
+        int lockLength = dataBuffer.getShort();
+        if (lockLength != keyLength) {
+            dataChannel.close();
+            bufferPool.returnBuffer(dataBuffer);
+            return -1.0;
+        }
+
+        int numValues = dataBuffer.getShort();
+        if (numValues < valueIndex) {
+            dataChannel.close();
+            bufferPool.returnBuffer(dataBuffer);
+            return 0.0;
+        }
+
+        offset += 4 + lockLength + valueIndex * 8L;
+        dataChannel.position(offset);
+        dataBuffer.clear();
+        dataChannel.read(dataBuffer);
+        dataBuffer.flip();
+        double foundValue = dataBuffer.getDouble();
+
+        bufferPool.returnBuffer(dataBuffer);
+        dataChannel.close();
+        return foundValue;
     }
 
     /**

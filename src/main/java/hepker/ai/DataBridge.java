@@ -89,6 +89,9 @@ final class DataBridge {
                 }
 
                 double queryResult = dataStore.getValue(targetKey, valueIndex, offset);
+                if (queryResult > 0) {
+                    result.set(queryResult);
+                }
             }
         }
     }
