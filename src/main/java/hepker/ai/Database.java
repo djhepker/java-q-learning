@@ -30,18 +30,13 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Handles all write and read calls to .dat files
  */
-class Database {
-    private static final int INT_BYTES = 4;
-    private static final int DOUBLE_LONG_BYTES = 8;
-
+final class Database {
+    private final String dataFilePath = "src/main/resources/data/data.dat";
     private final AtomicBoolean isInitialized;
     private final ByteBufferPool bufferPool;
 
-    private RandomAccessFile dataStore;
-    private FileChannel dataChannel;
-    private RandomAccessFile indexStore;
-    private FileChannel indexChannel;
-
+    private RandomAccessFile idxStore;
+    private FileChannel idxChannel;
 
     /**
      * Constructor for initializing necessary dataStore management
@@ -75,22 +70,38 @@ class Database {
      *
      * @throws IOException Thrown if interrupted while reading
      */
-    double getValue(byte[] key, int actionIndex) throws IOException {
+    double getValue(byte[] key, int valueIndex, long offset) throws IOException {
+        // TODO: Test FileChannel pool to see if that improves performance
+        FileChannel dataChannel = new RandomAccessFile(dataFilePath, "rw").getChannel();
         int keyLength = key.length;
-        int numIndicies = getDataInt(indexChannel, ByteBuffer.allocate(4), 0);
+        ByteBuffer dataBuffer = bufferPool.getBuffer();
+        int numIndicies = getDataInt(dataChannel, dataBuffer, 0);
         long lockIndex = getLockIndex(keyLength, key);
 
         return 0.0;
     }
 
     /**
+     * Reads byte data from the given file at the specified position
+     *
+     * @param channel   Channel used to read from the file
+     * @param buffer    ByteBuffer to store the read data
+     * @param initIndex  The position in the file to start reading from
+     * @throws IOException Thrown if interrupted while reading
+     * @return Int from file
+     */
+    int getDataShort(FileChannel channel, ByteBuffer buffer, long initIndex) throws IOException {
+        channel.position(initIndex);
+        channel.read(buffer);
+        return buffer.getShort();
+    }
+
+    /**
      * Closes the database. Call once all reads and writes have been finalized
      */
     void close() throws IOException {
-        dataStore.close();
-        indexStore.close();
-        dataChannel.close();
-        indexChannel.close();
+        idxStore.close();
+        idxChannel.close();
     }
 
     private long getLockIndex(int keyLength, byte[] key) throws IOException {
@@ -104,24 +115,60 @@ class Database {
      * @param buffer    ByteBuffer to store the read data
      * @param initIndex  The position in the file to start reading from
      * @throws IOException Thrown if interrupted while reading
+     * @return Int from file
      */
-    private double getDataDouble(FileChannel channel, ByteBuffer buffer, long initIndex) throws IOException {
-
-        return 0.0;
-    }
-
-    /**
-     * Reads byte data from the given file at the specified position
-     *
-     * @param channel   Channel used to read from the file
-     * @param buffer    ByteBuffer to store the read data
-     * @param initIndex  The position in the file to start reading from
-     * @throws IOException Thrown if interrupted while reading
-     */
-    private int getDataInt(FileChannel channel, ByteBuffer buffer, long initIndex) throws IOException {
+    int getDataInt(FileChannel channel, ByteBuffer buffer, long initIndex) throws IOException {
         channel.position(initIndex);
         channel.read(buffer);
         return buffer.getInt();
+    }
+
+    /**
+     * Retrieves the number of long values stored in .idx as key indices
+     *
+     * @throws IOException Thrown if interrupted while reading
+     * @return Number of long stored in .idx file
+     */
+    int getIdxInt(int offset) throws IOException {
+        ByteBuffer indexBuffer = bufferPool.getBuffer();
+        idxChannel.read(indexBuffer);
+        int numIndices = indexBuffer.position(offset).getInt();
+        bufferPool.returnBuffer(indexBuffer);
+        return numIndices;
+    }
+
+    /**
+     * Retrieves a long from .idx file
+     *
+     * @throws IOException Thrown if interrupted while reading
+     * @return long representing offset of a String Key inside .dat
+     */
+    long getIdxLong(int offset) throws IOException {
+        ByteBuffer longBuffer = bufferPool.getBuffer();
+        idxChannel.read(longBuffer);
+        long index = longBuffer.position(offset).getLong();
+        bufferPool.returnBuffer(longBuffer);
+        return index;
+    }
+
+    /**
+     * Retrieves long[] of all indices stored in .idx
+     *
+     * @param numIndices The number if indices to retrieve
+     * @return long[] of all stored indices
+     * @throws IOException Connection error
+     */
+    long[] getIdxLongArray(int numIndices, int initPosition) throws IOException {
+        int startPos = 4 + initPosition;
+        long[] idxLongs = new long[numIndices];
+
+        ByteBuffer longBuffer = bufferPool.getBuffer();
+        for (int i = 0; i < numIndices; i++) {
+            int offset = startPos + i * 8;
+            idxLongs[i] = longBuffer.position(offset).getLong();
+        }
+        bufferPool.returnBuffer(longBuffer);
+        return idxLongs;
     }
 
     /**
@@ -141,10 +188,8 @@ class Database {
         if (!Files.exists(Paths.get(dataDirectoryPath))) {
             generateDataIndices(dataDirectoryPath);
         } else {
-            this.indexStore = new RandomAccessFile(dataDirectoryPath + "/index_values.dat", "rw");
-            this.dataStore = new RandomAccessFile(dataDirectoryPath + "/q_values.dat", "rw");
-            this.indexChannel = indexStore.getChannel();
-            this.dataChannel = dataStore.getChannel();
+            this.idxStore = new RandomAccessFile(dataDirectoryPath + "/index.idx", "rw");
+            this.idxChannel = idxStore.getChannel();
         }
     }
 
@@ -158,10 +203,8 @@ class Database {
         if (!new File(dataDirectoryPath).mkdirs()) {
             throw new IOException(String.format("Directory %s failed to initialize", dataDirectoryPath));
         }
-        this.indexStore = new RandomAccessFile(dataDirectoryPath + "/index_values.dat", "rw");
-        this.dataStore = new RandomAccessFile(dataDirectoryPath + "/q_values.dat", "rw");
-        this.indexChannel = indexStore.getChannel();
-        this.dataChannel = dataStore.getChannel();
+        this.idxStore = new RandomAccessFile(dataDirectoryPath + "/index.idx", "rw");
+        this.idxChannel = idxStore.getChannel();
 
         // int numkeys, int numInvalid, long[32] (indices)
         int initialIndices = 32;
@@ -172,7 +215,7 @@ class Database {
             header.putLong(0);
         }
         header.flip();
-        writeData(header, indexChannel, 0);
+        writeData(header, idxChannel, 0);
         bufferPool.returnBuffer(header);
     }
 }

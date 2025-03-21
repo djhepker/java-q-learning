@@ -7,21 +7,26 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
-class DataManager {
+/**
+ * Manager employed by Agent to handle learned information values. Middleman between Agent and Database
+ */
+final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-
-    private final Database dataStore;
     private static int batchSize = 100;
 
+    private final DataBridge bridge;
     private DataNode head;
     private DataNode tail;
 
     private int cacheSize;
 
+    /**
+     * Safely constructs creation of the DataBridge and corresponding Database
+     */
     DataManager() {
-        Database tmpDb;
+        DataBridge tmpB;
         try {
-            tmpDb = new Database();
+            tmpB = new DataBridge();
             LOGGER.info("Initialized database successfully");
             this.cacheSize = 0;
             this.head = null;
@@ -30,7 +35,7 @@ class DataManager {
             LOGGER.error("Failed to initialize database", e);
             throw new RuntimeException("Failed to initialize database", e);
         }
-        dataStore = tmpDb;
+        bridge = tmpB;
     }
 
     /**
@@ -149,7 +154,7 @@ class DataManager {
      */
     void close() {
         try {
-            dataStore.close();
+            bridge.close();
         } catch (IOException e) {
             LOGGER.error("Failed to close database", e);
         }
