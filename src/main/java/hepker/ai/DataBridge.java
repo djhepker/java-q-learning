@@ -38,7 +38,7 @@ final class DataBridge {
 
         // TODO: test if it is faster to divide offsetArr in half and start one thread at each end
         long[] offsetArr = dataStore.getIdxLongArray(numIndices, 0);
-        Arrays.sort(offsetArr);
+        Arrays.sort(offsetArr); // TODO: is this necessary? Probably not
 
         List<long[]> batches = divideIntoBatches(offsetArr, threadPoolSize);
         for (long[] batch : batches) {

@@ -27,11 +27,12 @@ final class DataManager {
         DataBridge tmpB;
         try {
             tmpB = new DataBridge(bufferPool);
-            LOGGER.info("Initialized database successfully");
             DataArray cacheData = new DataArray(25);
+            LOGGER.info("Initialized Database Successfully");
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize database", e);
-            throw new RuntimeException("Failed to initialize database", e);
+            String errorMessage = "DataManager Failed to Initialize Database";
+            LOGGER.error(errorMessage, e);
+            throw new RuntimeException(errorMessage, e);
         }
         bridge = tmpB;
     }

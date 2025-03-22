@@ -58,18 +58,13 @@ final class Database {
      * @throws IOException If the connection is interrupted or there are file-related errors
      */
     void appendDataToFile(byte[] byteSequence, FileChannel channel) throws IOException {
-        try {
-            ByteBuffer bufferAppend = bufferPool.getBuffer();
-            bufferAppend.put(byteSequence);
-
-            channel.position(channel.size());
-
-            while (bufferAppend.hasRemaining()) {
-                channel.write(bufferAppend);
-            }
-        } finally {
-            bufferPool.returnBuffer(bufferAppend);
+        ByteBuffer bufferAppend = bufferPool.getBuffer();
+        bufferAppend.put(byteSequence);
+        channel.position(channel.size());
+        while (bufferAppend.hasRemaining()) {
+            channel.write(bufferAppend);
         }
+        bufferPool.returnBuffer(bufferAppend);
     }
 
     /**
@@ -100,10 +95,10 @@ final class Database {
                     return -1.0;
                 }
                 dataBuffer.position(dataBuffer.position() + valueIndex * 8);
-                return dataBuffer.getDouble();
             } finally {
                 bufferPool.returnBuffer(dataBuffer);
             }
+            return dataBuffer.getDouble();
         }
     }
 
@@ -171,14 +166,22 @@ final class Database {
      */
     long[] getIdxLongArray(int numIndices, int initPosition) throws IOException {
         int startPos = 4 + initPosition;
+        int bytesToRead = numIndices * 8;
         long[] idxLongs = new long[numIndices];
-
         ByteBuffer longBuffer = bufferPool.getBuffer();
-        for (int i = 0; i < numIndices; i++) {
-            int offset = startPos + i * 8;
-            idxLongs[i] = longBuffer.position(offset).getLong();
+        try {
+            if (longBuffer.capacity() < bytesToRead) {
+                longBuffer = ByteBuffer.allocateDirect(bytesToRead);
+            }
+            idxChannel.position(startPos);
+            idxChannel.read(longBuffer);
+            longBuffer.flip();
+            for (int i = 0; i < numIndices; ++i) {
+                idxLongs[i] = longBuffer.getLong();
+            }
+        } finally {
+            bufferPool.returnBuffer(longBuffer);
         }
-        bufferPool.returnBuffer(longBuffer);
         return idxLongs;
     }
 
@@ -226,8 +229,7 @@ final class Database {
             header.putLong(0);
         }
         header.flip();
-
-
+        appendDataToFile(header.array(), idxStore.getChannel());
 
         bufferPool.returnBuffer(header);
     }
