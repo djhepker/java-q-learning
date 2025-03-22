@@ -15,18 +15,16 @@ final class DataManager {
     private static int batchSize = 12000;
 
     private final DataBridge bridge;
-    private final ByteBufferPool bufferPool;
     private final DataArray dataArray;
 
     /**
      * Safely constructs creation of the DataBridge and corresponding Database
      */
     DataManager() {
-        this.bufferPool = new ByteBufferPool(10);
         this.dataArray = new DataArray(batchSize);
         DataBridge tmpB;
         try {
-            tmpB = new DataBridge(bufferPool);
+            tmpB = new DataBridge(new ByteBufferPool(10));
             DataArray cacheData = new DataArray(25);
             LOGGER.info("Initialized Database Successfully");
         } catch (Exception e) {

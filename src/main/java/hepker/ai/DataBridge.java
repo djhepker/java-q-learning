@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -18,6 +19,7 @@ final class DataBridge {
 
     DataBridge(ByteBufferPool bufferArg) throws IOException {
         this.dataStore = new Database(bufferArg);
+        this.threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
     }
 
     void writeValue() {
@@ -32,15 +34,14 @@ final class DataBridge {
     double getValue(byte[] key, int actionIndex) throws IOException, InterruptedException {
         int numIndices = dataStore.getIdxInt(0);
         int threadPoolSize = Runtime.getRuntime().availableProcessors();
-        threadPool = Executors.newFixedThreadPool(threadPoolSize);
+
         AtomicReference<Double> result = new AtomicReference<>(null);
-        CountDownLatch latch = new CountDownLatch(threadPoolSize);
 
         // TODO: test if it is faster to divide offsetArr in half and start one thread at each end
         long[] offsetArr = dataStore.getIdxLongArray(numIndices, 0);
-        Arrays.sort(offsetArr); // TODO: is this necessary? Probably not
 
         List<long[]> batches = divideIntoBatches(offsetArr, threadPoolSize);
+        CountDownLatch latch = new CountDownLatch(batches.size());
         for (long[] batch : batches) {
             threadPool.submit(() -> {
                 try {
@@ -50,12 +51,7 @@ final class DataBridge {
                 }
             });
         }
-        try {
-            latch.await();
-        } finally {
-            threadPool.shutdown();
-        }
-
+        latch.await();
         return result.get() == null ? 0.0 : result.get();
     }
 
@@ -81,6 +77,15 @@ final class DataBridge {
      * @throws IOException Throws if database failed to close properly
      */
     void close() throws IOException {
+        threadPool.shutdown();
+        try {
+            if (!threadPool.awaitTermination(60, TimeUnit.SECONDS)) {
+                threadPool.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            threadPool.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
         dataStore.close();
     }
 
@@ -106,11 +111,15 @@ final class DataBridge {
                     if (result.get() != null) {
                         return;
                     }
+                    //TODO figure out how to deal with missing values better than -1, clearly won't work
                     double queryResult = dataStore.getValue(targetKey, valueIndex, offset);
                     if (queryResult >= 0) {
                         result.set(queryResult);
                     }
                 }
+            } catch (Exception e) {
+              String errorMessage = "Error while parallel processing SearchTask.";
+              throw new RuntimeException(errorMessage, e);
             } finally {
                 latch.countDown();
             }
