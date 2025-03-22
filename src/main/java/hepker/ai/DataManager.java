@@ -12,25 +12,23 @@ import java.nio.charset.StandardCharsets;
  */
 final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static int batchSize = 100;
+    private static int batchSize = 12000;
 
     private final DataBridge bridge;
-    private DataNode head;
-    private DataNode tail;
-
-    private int cacheSize;
+    private final ByteBufferPool bufferPool;
+    private final DataArray dataArray;
 
     /**
      * Safely constructs creation of the DataBridge and corresponding Database
      */
     DataManager() {
+        this.bufferPool = new ByteBufferPool(10);
+        this.dataArray = new DataArray(batchSize);
         DataBridge tmpB;
         try {
-            tmpB = new DataBridge();
+            tmpB = new DataBridge(bufferPool);
             LOGGER.info("Initialized database successfully");
-            this.cacheSize = 0;
-            this.head = null;
-            this.tail = null;
+            DataArray cacheData = new DataArray(25);
         } catch (Exception e) {
             LOGGER.error("Failed to initialize database", e);
             throw new RuntimeException("Failed to initialize database", e);
@@ -46,10 +44,12 @@ final class DataManager {
      * @return Value of performing action actionIndex in state key. Returns 0.0 if not found
      */
     double queryValue(String key, int actionIndex) {
-        if (true) {
-            // retrieve through bridge logic, return value
+        try {
+            return bridge.getValue(key.getBytes(), actionIndex);
+        } catch (IOException | InterruptedException e) {
+            LOGGER.error(String.format("Failed to get value for key %s with index %d", key, actionIndex), e);
+            throw new RuntimeException(e);
         }
-        return 0.0;
     }
 
     /**
@@ -81,72 +81,63 @@ final class DataManager {
      * @return cacheSize Counter of DataNodes being tracked
      */
     int getCacheSize() {
-        return cacheSize;
+        return dataArray.getCacheSize();
     }
 
     /**
      * Sets the exclusive quantity of nodes allowed to be queued for database storage. Default 100
      *
-     * @param batchSize The exclusive maximum number of nodes to be stored in cache
+     * @param newBatchSize The exclusive maximum number of nodes to be stored in cache
      */
-    void setBatchSize(int batchSize) {
-        DataManager.batchSize = batchSize;
+    void setBatchSize(int newBatchSize) {
+        batchSize = newBatchSize;
     }
 
     /**
-     * Queues up data for addition to the database. Stored as a singly linked-list. String key must not exceed
+     * Queues up data for addition to the database. Stored as a singly linked-list. String stateKey must not exceed
      * a length of 100 characters. Will throw a RuntimeException in such a case
      *
-     * @param key String representation of world state
+     * @param stateKey String representation of world state
      * @param actionIndex Chosen action in given world state
-     * @param value Value of making action in state key
+     * @param value Value of making action in state stateKey
      */
-    void queueData(String key, int actionIndex, double value) {
-        byte[] dataArr = convertTupleToBytes(actionIndex, key, value);
-
-        if (head != null) {
-            tail = new DataNode(dataArr, tail);
-        } else {
-            head = new DataNode(dataArr, null);
-            tail = head;
-        }
-        if (++cacheSize >= batchSize) {
+    void queueData(String stateKey, int actionIndex, double value) {
+        byte[] dataArr = convertTupleToBytes((short) actionIndex, stateKey, value);
+        dataArray.queueData(dataArr);
+        if (dataArray.getCacheSize() >= batchSize) {
             pushData();
         }
     }
 
     /**
-     * Converts data to a byte[]. keylength, key, action index, value
+     * Converts data to a byte[]. keylength, stateKey, action index, value, in that order
      *
      * @param actionIndex Chosen action in given world state
-     * @param key String representation of world state
-     * @param value Value of making action in state key
+     * @param stateKey String representation of world state
+     * @param value Value of making action in state stateKey
      * @return byte[] of input arguments in order of
      */
-    private byte[] convertTupleToBytes(int actionIndex, String key, double value) {
-        if (key.length() > 100) {
-            throw new RuntimeException(String.format("StateKey is too long: %s", key.length()));
+    private byte[] convertTupleToBytes(short actionIndex, String stateKey, double value) {
+        if (stateKey.length() > 100) {
+            throw new RuntimeException(String.format("StateKey is too long: %s", stateKey.length()));
         }
-        byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
+        byte[] keyBytes = stateKey.getBytes(StandardCharsets.UTF_8);
         short keyLength = (short) keyBytes.length;
-        ByteBuffer byteBuffer = ByteBuffer.allocate(2 + keyLength + 4 + 8);
-        byteBuffer.putShort(keyLength);
-        byteBuffer.put(keyBytes);
-        byteBuffer.putInt(actionIndex);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(12 + keyLength);
+        byteBuffer.putShort(keyLength); // Checked first in query; fastest way to determine valid stateKey
+        byteBuffer.put(keyBytes); // key is checked second to verify search success
+        byteBuffer.putShort(actionIndex); // Allows query check if desired index exists
         byteBuffer.putDouble(value);
 
         return byteBuffer.array();
     }
 
     /**
-     * Pushes all queued data to the database, eliminating cached nodes
+     * Pushes all queued data to the database, eliminating cached bytes
      *
      */
     void pushData() {
-        // push logic here
-        head = null;
-        tail = null;
-        cacheSize = 0;
+        bridge.writeValue();
     }
 
     /**
@@ -161,13 +152,53 @@ final class DataManager {
     }
 
     /**
-     * Node in singly linked-list which contains a statekey, index action, value, and a link
-     * to the next node in the list
-     *
-     * @param dataBytes byte[] of the data to be stored in the db
-     * @param next The next DataNode. Null if this node is the head node
+     * Array object for storing bytes to be written to Database
      */
-    record DataNode(byte[] dataBytes, DataNode next) {
+    private class DataArray {
+        private byte[] data;
+        private int cacheSize = 0;
 
+        DataArray(int initialCapacity) {
+            data = new byte[initialCapacity];
+        }
+
+        /**
+         * Adds bytes to the data[] for writing
+         *
+         * @param byteSequence Bytes to be written to .dat file
+         */
+        void queueData(byte[] byteSequence) {
+            int cacheSnapshot = cacheSize;
+            int sequenceLength = byteSequence.length;
+            cacheSize += sequenceLength;
+            if (cacheSize >= data.length) {
+                byte[] newData = new byte[data.length * 2];
+                System.arraycopy(data, 0, newData, 0, cacheSnapshot);
+                data = newData;
+            }
+            System.arraycopy(byteSequence, 0, data, cacheSnapshot, sequenceLength);
+        }
+
+        /**
+         * Retrieves the number of bytes currently queued as data
+         *
+         * @return count of bytes stored
+         */
+        int getCacheSize() {
+            return cacheSize;
+        }
+
+        /**
+         * Retrieves and empties cash reserves of DataArray. member byte[] is emptied, reset to batchSize
+         *
+         * @return bytes queued to be written to .dat file
+         */
+        byte[] flushCache() {
+            byte[] exportBytes = new byte[cacheSize];
+            System.arraycopy(data, 0, exportBytes, 0, cacheSize);
+            data = new byte[batchSize];
+            cacheSize = 0;
+            return exportBytes;
+        }
     }
 }

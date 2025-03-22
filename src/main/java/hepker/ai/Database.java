@@ -44,67 +44,54 @@ final class Database {
      *
      * @throws IOException Failed to instantiate Database file
      */
-    Database() throws IOException {
+    Database(ByteBufferPool bufferArg) throws IOException {
         this.isInitialized = new AtomicBoolean(false);
-        this.bufferPool = new ByteBufferPool(10);
+        this.bufferPool = bufferArg;
         initializeDatabase();
     }
 
     /**
      * Writes byte data to the given file starting at the specified position.
      *
-     * @param dataBuffer      ByteBuffer of data to be written
-     * @param channel         Channel used to write to the file
-     * @param initIndex The position in the file to start writing from
      * @throws IOException Thrown if interrupted while writing
      */
-    void writeData(ByteBuffer dataBuffer, FileChannel channel, long initIndex) throws IOException {
-        channel.position(initIndex); // Set position to specified index
-        dataBuffer.flip();
-        while (dataBuffer.hasRemaining()) {
-            channel.write(dataBuffer);
-        }
+    void writeData(byte[] key, double value, int index) throws IOException {
+
     }
 
     /**
-     * Reads byte data from the given file at the specified position
+     * Scans a partition of .dat file for a specified value
      *
      * @throws IOException Thrown if interrupted while reading
      */
     double getValue(byte[] key, int valueIndex, long offset) throws IOException {
         // TODO: Test FileChannel pool to see if that improves performance
-        FileChannel dataChannel = new RandomAccessFile(dataFilePath, "rw").getChannel();
-        int keyLength = key.length;
-        ByteBuffer dataBuffer = bufferPool.getBuffer();
+        try (FileChannel dataChannel = new RandomAccessFile(dataFilePath, "rw").getChannel()) {
+            ByteBuffer dataBuffer = bufferPool.getBuffer();
+            try {
+                dataChannel.position(offset);
+                dataChannel.read(dataBuffer);
+                dataBuffer.flip();
+                int storedKeyLength = dataBuffer.getShort();
+                if (storedKeyLength != key.length) {
+                    return -1.0;
+                }
+                int numValues = dataBuffer.getShort();
+                if (valueIndex >= numValues) {
+                    return 0.0;
+                }
 
-        dataChannel.position(offset);
-        dataChannel.read(dataBuffer);
-        dataBuffer.flip();
-
-        int lockLength = dataBuffer.getShort();
-        if (lockLength != keyLength) {
-            dataChannel.close();
-            bufferPool.returnBuffer(dataBuffer);
-            return -1.0;
+                byte[] byteLock = new byte[storedKeyLength];
+                dataBuffer.get(byteLock);
+                if (!Arrays.equals(byteLock, key)) {
+                    return -1.0;
+                }
+                dataBuffer.position(dataBuffer.position() + valueIndex * 8);
+                return dataBuffer.getDouble();
+            } finally {
+                bufferPool.returnBuffer(dataBuffer);
+            }
         }
-
-        int numValues = dataBuffer.getShort();
-        if (numValues < valueIndex) {
-            dataChannel.close();
-            bufferPool.returnBuffer(dataBuffer);
-            return 0.0;
-        }
-
-        offset += 4 + lockLength + valueIndex * 8L;
-        dataChannel.position(offset);
-        dataBuffer.clear();
-        dataChannel.read(dataBuffer);
-        dataBuffer.flip();
-        double foundValue = dataBuffer.getDouble();
-
-        bufferPool.returnBuffer(dataBuffer);
-        dataChannel.close();
-        return foundValue;
     }
 
     /**

@@ -16,8 +16,12 @@ final class DataBridge {
     private final Database dataStore;
     private ExecutorService threadPool;
 
-    DataBridge() throws IOException {
-        this.dataStore = new Database();
+    DataBridge(ByteBufferPool bufferArg) throws IOException {
+        this.dataStore = new Database(bufferArg);
+    }
+
+    void writeValue() {
+        //dataStore.writeData()
     }
 
     /**
@@ -38,11 +42,25 @@ final class DataBridge {
 
         List<long[]> batches = divideIntoBatches(offsetArr, threadPoolSize);
         for (long[] batch : batches) {
-            threadPool.submit(new SearchTask(key, actionIndex, batch, result, latch)::process);
+            threadPool.submit(() -> {
+                try {
+                    new SearchTask(key, actionIndex, batch, result, latch).process();
+                } catch (IOException e) {
+                    throw new RuntimeException("Error while parallel processing SearchTask", e);
+                }
+            });
         }
-        latch.await();
+        try {
+            latch.await();
+        } finally {
+            threadPool.shutdown();
+        }
 
         return result.get() == null ? 0.0 : result.get();
+    }
+
+    private long queryDB() {
+        return 0L;
     }
 
     private List<long[]> divideIntoBatches(long[] indices, int threadPoolSize) {
@@ -83,15 +101,18 @@ final class DataBridge {
         }
 
         void process() throws IOException {
-            for (long offset : offsets) {
-                if (result.get() != null) {
-                    return;
+            try {
+                for (long offset : offsets) {
+                    if (result.get() != null) {
+                        return;
+                    }
+                    double queryResult = dataStore.getValue(targetKey, valueIndex, offset);
+                    if (queryResult >= 0) {
+                        result.set(queryResult);
+                    }
                 }
-
-                double queryResult = dataStore.getValue(targetKey, valueIndex, offset);
-                if (queryResult > 0) {
-                    result.set(queryResult);
-                }
+            } finally {
+                latch.countDown();
             }
         }
     }
