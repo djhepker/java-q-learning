@@ -51,12 +51,25 @@ final class Database {
     }
 
     /**
-     * Writes byte data to the given file starting at the specified position.
+     * Appends data to the end of the file
      *
-     * @throws IOException Thrown if interrupted while writing
+     * @param byteSequence Represents Agent's state
+     * @param channel Connection to the file that data will be appended to
+     * @throws IOException If the connection is interrupted or there are file-related errors
      */
-    void writeData(byte[] key, double value, int index) throws IOException {
+    void appendDataToFile(byte[] byteSequence, FileChannel channel) throws IOException {
+        try {
+            ByteBuffer bufferAppend = bufferPool.getBuffer();
+            bufferAppend.put(byteSequence);
 
+            channel.position(channel.size());
+
+            while (bufferAppend.hasRemaining()) {
+                channel.write(bufferAppend);
+            }
+        } finally {
+            bufferPool.returnBuffer(bufferAppend);
+        }
     }
 
     /**
@@ -184,7 +197,7 @@ final class Database {
     private void initialize() throws IOException {
         String dataDirectoryPath = "src/main/resources/data";
         if (!Files.exists(Paths.get(dataDirectoryPath))) {
-            generateDataIndices(dataDirectoryPath);
+            generateIdxFile(dataDirectoryPath);
         } else {
             this.idxStore = new RandomAccessFile(dataDirectoryPath + "/index.idx", "rw");
             this.idxChannel = idxStore.getChannel();
@@ -197,7 +210,7 @@ final class Database {
      * @param dataDirectoryPath Path where the files will be created
      * @throws IOException Database connection broken
      */
-    private void generateDataIndices(String dataDirectoryPath) throws IOException {
+    private void generateIdxFile(String dataDirectoryPath) throws IOException {
         if (!new File(dataDirectoryPath).mkdirs()) {
             throw new IOException(String.format("Directory %s failed to initialize", dataDirectoryPath));
         }
@@ -213,7 +226,9 @@ final class Database {
             header.putLong(0);
         }
         header.flip();
-        writeData(header, idxChannel, 0);
+
+
+
         bufferPool.returnBuffer(header);
     }
 }
