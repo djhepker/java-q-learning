@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
  */
 final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static int batchSize = 12000;
+    private static int batchSize = 12_000;
 
     private final DataBridge bridge;
     private final DataArray dataArray;
@@ -25,7 +25,6 @@ final class DataManager {
         DataBridge tmpB;
         try {
             tmpB = new DataBridge(new ByteBufferPool(10));
-            DataArray cacheData = new DataArray(25);
             LOGGER.info("Initialized Database Successfully");
         } catch (Exception e) {
             String errorMessage = "DataManager Failed to Initialize Database";
@@ -133,10 +132,15 @@ final class DataManager {
 
     /**
      * Pushes all queued data to the database, eliminating cached bytes
-     *
      */
     void pushData() {
-        bridge.writeValue();
+        try {
+            bridge.writeValue(dataArray.flushCache());
+        } catch (IOException e) {
+            String errorMessage = "Failed to Push Data";
+            LOGGER.error(errorMessage, e);
+            throw new RuntimeException(errorMessage, e);
+        }
     }
 
     /**

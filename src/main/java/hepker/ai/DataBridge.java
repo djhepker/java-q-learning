@@ -15,60 +15,60 @@ import java.util.concurrent.atomic.AtomicReference;
  */
 final class DataBridge {
     private final Database dataStore;
-    private ExecutorService threadPool;
+    private final ExecutorService threadPool;
+    private final BridgeUtilities dataUtils;
+    private final int threadPoolSize;
 
+    /**
+     * Constructs final variables and passes through ByteBufferPool
+     *
+     * @param bufferArg BufferPool to be used by Database
+     * @throws IOException If the connections are interrupted
+     */
     DataBridge(ByteBufferPool bufferArg) throws IOException {
         this.dataStore = new Database(bufferArg);
-        this.threadPool = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-    }
-
-    void writeValue() {
-        //dataStore.writeData()
+        this.dataUtils = new BridgeUtilities(dataStore);
+        this.threadPoolSize = Runtime.getRuntime().availableProcessors();
+        this.threadPool = Executors.newFixedThreadPool(threadPoolSize);
     }
 
     /**
-     * Reads byte data from the given file at the specified position
+     * Handles parallel processing for writing (keylength, stateKey, action index, value, in that order)
      *
-     * @throws IOException Thrown if interrupted while reading
+     * @param dataSequence Queued data to be written to .dat file
+     * @throws IOException If an I/O error occurs
      */
-    double getValue(byte[] key, int actionIndex) throws IOException, InterruptedException {
+    void writeValue(byte[] dataSequence) throws IOException {
+        //TODO parallel delegation of the write
+        long[] offsets = dataStore.getIdxLongArray(dataStore.getIdxInt(0), 0);
+
+        dataStore.writeData();
+    }
+
+    /**
+     * Retrieves a value from the database using parallel processing across multiple threads.
+     * Each thread processes a batch of offsets to search for the key.
+     *
+     * @param key The key to search for
+     * @param actionIndex The index of the value to retrieve
+     * @return The value associated with the key, or 0.0 if not found
+     * @throws IOException If an I/O error occurs
+     * @throws InterruptedException If the thread is interrupted
+     */
+    double getValue(byte[] key, int actionIndex) throws IOException, InterruptedException, RuntimeException {
         int numIndices = dataStore.getIdxInt(0);
-        int threadPoolSize = Runtime.getRuntime().availableProcessors();
-
         AtomicReference<Double> result = new AtomicReference<>(null);
-
         // TODO: test if it is faster to divide offsetArr in half and start one thread at each end
         long[] offsetArr = dataStore.getIdxLongArray(numIndices, 0);
-
         List<long[]> batches = divideIntoBatches(offsetArr, threadPoolSize);
         CountDownLatch latch = new CountDownLatch(batches.size());
         for (long[] batch : batches) {
             threadPool.submit(() -> {
-                try {
-                    new SearchTask(key, actionIndex, batch, result, latch).process();
-                } catch (IOException e) {
-                    throw new RuntimeException("Error while parallel processing SearchTask", e);
-                }
+                dataUtils.searchTask(key, actionIndex, batch, result, latch);
             });
         }
         latch.await();
         return result.get() == null ? 0.0 : result.get();
-    }
-
-    private long queryDB() {
-        return 0L;
-    }
-
-    private List<long[]> divideIntoBatches(long[] indices, int threadPoolSize) {
-        List<long[]> batches = new ArrayList<>();
-        int numIndices = indices.length;
-        int batchSize = (numIndices + threadPoolSize - 1) / threadPoolSize;
-
-        for (int i = 0; i < numIndices; i += batchSize) {
-            int end = Math.min(i + batchSize, numIndices);
-            batches.add(Arrays.copyOfRange(indices, i, end));
-        }
-        return batches;
     }
 
     /**
@@ -89,40 +89,26 @@ final class DataBridge {
         dataStore.close();
     }
 
-    private class SearchTask {
-        private final long[] offsets;
-        private final byte[] targetKey;
-        private final AtomicReference<Double> result;
-        private final CountDownLatch latch;
-        private final int valueIndex;
+    private long queryDB() {
+        return 0L;
+    }
 
-        SearchTask(byte[] targetKey, int valueIndex,
-                   long[] offsets, AtomicReference<Double> result, CountDownLatch latch) {
-            this.targetKey = targetKey;
-            this.result = result;
-            this.latch = latch;
-            this.offsets = offsets;
-            this.valueIndex = valueIndex;
-        }
+    /**
+     * Divides offsets into relatively equivalent batches
+     *
+     * @param offsets Indices of stateKey in .dat
+     * @param threadPoolSize Number of threads we are using to parallel task
+     * @return Container of roughly equivalent sized offsets
+     */
+    private List<long[]> divideIntoBatches(long[] offsets, int threadPoolSize) {
+        List<long[]> batches = new ArrayList<>();
+        int numIndices = offsets.length;
+        int batchSize = (numIndices + threadPoolSize - 1) / threadPoolSize;
 
-        void process() throws IOException {
-            try {
-                for (long offset : offsets) {
-                    if (result.get() != null) {
-                        return;
-                    }
-                    //TODO figure out how to deal with missing values better than -1, clearly won't work
-                    double queryResult = dataStore.getValue(targetKey, valueIndex, offset);
-                    if (queryResult >= 0) {
-                        result.set(queryResult);
-                    }
-                }
-            } catch (Exception e) {
-              String errorMessage = "Error while parallel processing SearchTask.";
-              throw new RuntimeException(errorMessage, e);
-            } finally {
-                latch.countDown();
-            }
+        for (int i = 0; i < numIndices; i += batchSize) {
+            int end = Math.min(i + batchSize, numIndices);
+            batches.add(Arrays.copyOfRange(offsets, i, end));
         }
+        return batches;
     }
 }

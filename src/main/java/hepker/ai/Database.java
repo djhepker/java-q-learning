@@ -50,6 +50,10 @@ final class Database {
         initializeDatabase();
     }
 
+    void writeData() throws IOException {
+
+    }
+
     /**
      * Appends data to the end of the file
      *
@@ -160,7 +164,7 @@ final class Database {
     /**
      * Retrieves long[] of all indices stored in .idx
      *
-     * @param numIndices The number if indices to retrieve
+     * @param numIndices The number of indices to retrieve
      * @return long[] of all stored indices
      * @throws IOException Connection error
      */
