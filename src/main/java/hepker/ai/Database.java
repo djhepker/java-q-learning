@@ -50,6 +50,11 @@ final class Database {
         initializeDatabase();
     }
 
+    /**
+     * Writes data to file. .idx is [int numKeys][int numInvalid][short keySize][long keyIndex]
+     *
+     * @throws IOException
+     */
     void writeData() throws IOException {
 
     }
@@ -162,22 +167,26 @@ final class Database {
     }
 
     /**
-     * Retrieves long[] of all indices stored in .idx
+     * Retrieves long[] of all indices stored in .idx<br>
+     * [int numKeys][int numInvalid][short keySize][long keyIndex]
      *
      * @param numIndices The number of indices to retrieve
+     * @param initPosition The starting position of indices we are searching. Used for parallel processing
      * @return long[] of all stored indices
      * @throws IOException Connection error
      */
-    long[] getIdxLongArray(int numIndices, int initPosition) throws IOException {
-        int startPos = 4 + initPosition;
-        int bytesToRead = numIndices * 8;
+    long[] getIdxLongArray(int numIndices, long initPosition) throws IOException {
+        int numBytesPerIndex = 10;
+        // offset of + 8 to bypass [int numKeys][int numInvalid]
+        long beginningReadPosition = initPosition + 8;
+        int bytesToRead = numIndices * numBytesPerIndex;
         long[] idxLongs = new long[numIndices];
         ByteBuffer longBuffer = bufferPool.getBuffer();
         try {
             if (longBuffer.capacity() < bytesToRead) {
                 longBuffer = ByteBuffer.allocateDirect(bytesToRead);
             }
-            idxChannel.position(startPos);
+            idxChannel.position(beginningReadPosition);
             idxChannel.read(longBuffer);
             longBuffer.flip();
             for (int i = 0; i < numIndices; ++i) {
@@ -187,6 +196,46 @@ final class Database {
             bufferPool.returnBuffer(longBuffer);
         }
         return idxLongs;
+    }
+
+    /**
+     * Retrieves long[] of all indices with a matching keyLength. Overloaded to filter by keySize<br>
+     * .idx is [int numKeys][int numInvalid][short keySize][long keyIndex]
+     *
+     * @param numIndices The number of indices to retrieve
+     * @param keyLength The length of the key we are searching for
+     * @param initPosition The starting position of indices we are searching. Used for parallel processing
+     * @return long[] of all stored indices
+     * @throws IOException Connection error
+     */
+    long[] getIdxLongArray(int numIndices, short keyLength, long initPosition) throws IOException {
+        int numBytesPerIndex = 10;
+        // offset of + 8 to bypass [int numKeys][int numInvalid]
+        long beginningReadPosition = initPosition + 8;
+        int bytesToRead = numIndices * numBytesPerIndex;
+        long[] idxLongs = new long[numIndices];
+        int validIndexCount = 0;
+        ByteBuffer longBuffer = bufferPool.getBuffer();
+        try {
+            if (longBuffer.capacity() < bytesToRead) {
+                longBuffer = ByteBuffer.allocateDirect(bytesToRead);
+            }
+            idxChannel.position(beginningReadPosition);
+            idxChannel.read(longBuffer);
+            longBuffer.flip();
+            for (int i = 0; i < numIndices; ++i) {
+                if (longBuffer.getShort() == keyLength) {
+                    idxLongs[validIndexCount++] = longBuffer.getLong();
+                } else {
+                    longBuffer.getLong(); // just used to move forward to the next short keyLength
+                }
+            }
+        } finally {
+            bufferPool.returnBuffer(longBuffer);
+        }
+        long[] results = new long[validIndexCount];
+        System.arraycopy(idxLongs, 0, results, 0, validIndexCount);
+        return results;
     }
 
     /**
@@ -212,7 +261,7 @@ final class Database {
     }
 
     /**
-     * Generates all .dat files and creates an index header
+     * Generates .idx file and initializes connection. Starter file is [int numKeys][int numInvalid]
      *
      * @param dataDirectoryPath Path where the files will be created
      * @throws IOException Database connection broken
@@ -223,15 +272,9 @@ final class Database {
         }
         this.idxStore = new RandomAccessFile(dataDirectoryPath + "/index.idx", "rw");
         this.idxChannel = idxStore.getChannel();
-
-        // int numkeys, int numInvalid, long[32] (indices)
-        int initialIndices = 32;
         ByteBuffer header = bufferPool.getBuffer();
         header.putInt(0);
         header.putInt(0);
-        for (int i = 0; i < initialIndices; i++) {
-            header.putLong(0);
-        }
         header.flip();
         appendDataToFile(header.array(), idxStore.getChannel());
 

@@ -30,7 +30,8 @@ final class DataBridge {
     }
 
     /**
-     * Handles parallel processing for writing (keylength, stateKey, action index, value, in that order)
+     * Handles parallel processing for writing (keylength, stateKey, action index, value, in that order)<br>
+     * .idx is [int numKeys][int numInvalid][short keySize][long keyIndex]
      *
      * @param dataSequence Queued data to be written to .dat file
      * @throws IOException If an I/O error occurs

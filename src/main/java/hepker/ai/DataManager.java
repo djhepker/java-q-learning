@@ -108,7 +108,8 @@ final class DataManager {
     }
 
     /**
-     * Converts data to a byte[]. keylength, stateKey, action index, value, in that order
+     * Converts data to a byte[]<br>
+     * [short keyLength][String stateKey][action index][double value]
      *
      * @param actionIndex Chosen action in given world state
      * @param stateKey String representation of world state
