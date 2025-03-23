@@ -1,5 +1,8 @@
 package hepker.ai;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -30,5 +33,44 @@ final class BridgeUtilities {
         } finally {
             latch.countDown();
         }
+    }
+
+    /**
+     * Delegates Bytes into [] representing individual Data writes
+     *
+     * @param dataSequence cache[] of data to be written to file
+     * @param dataIndices indices separating Data writes
+     * @return List of byte[] to be written to file
+     */
+    List<byte[]> getByteDelegation(byte[] dataSequence, int[] dataIndices) {
+        List<byte[]> results = new ArrayList<>();
+        int sequencePosition = 0;
+        for (int index : dataIndices) { // First index of dataIndices = zero, pointing to the start of dataSequence
+            sequencePosition += index; // Saves position in sequence via reference
+            byte[] resultElement = new byte[index];
+            System.arraycopy(dataSequence, sequencePosition, resultElement, 0, index);
+            results.add(resultElement);
+        }
+        return results;
+    }
+
+
+    /**
+     * Divides offsets into relatively equivalent batches
+     *
+     * @param offsets Indices of stateKey in .dat
+     * @param threadPoolSize Number of threads we are using to parallel task
+     * @return Container of roughly equivalent sized offsets
+     */
+    List<long[]> getLongDelegation(long[] offsets, int threadPoolSize) {
+        List<long[]> batches = new ArrayList<>();
+        int numIndices = offsets.length;
+        int batchSize = (numIndices + threadPoolSize - 1) / threadPoolSize;
+
+        for (int i = 0; i < numIndices; i += batchSize) {
+            int end = Math.min(i + batchSize, numIndices);
+            batches.add(Arrays.copyOfRange(offsets, i, end));
+        }
+        return batches;
     }
 }

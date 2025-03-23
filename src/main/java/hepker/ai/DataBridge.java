@@ -1,8 +1,6 @@
 package hepker.ai;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -22,11 +20,10 @@ final class DataBridge {
     /**
      * Constructs final variables and passes through ByteBufferPool
      *
-     * @param bufferArg BufferPool to be used by Database
      * @throws IOException If the connections are interrupted
      */
-    DataBridge(ByteBufferPool bufferArg) throws IOException {
-        this.dataStore = new Database(bufferArg);
+    DataBridge() throws IOException {
+        this.dataStore = new Database();
         this.dataUtils = new BridgeUtilities(dataStore);
         this.threadPoolSize = Runtime.getRuntime().availableProcessors();
         this.threadPool = Executors.newFixedThreadPool(threadPoolSize);
@@ -38,9 +35,19 @@ final class DataBridge {
      * @param dataSequence Queued data to be written to .dat file
      * @throws IOException If an I/O error occurs
      */
-    void writeValue(byte[] dataSequence) throws IOException {
-        //TODO parallel delegation of the write
-        long[] offsets = dataStore.getIdxLongArray(dataStore.getIdxInt(0), 0);
+    void writeCache(byte[] dataSequence, int[] dataIndices) throws IOException, InterruptedException {
+        long[] offsetArr = dataStore.getIdxLongArray(dataStore.getIdxInt(0), 0);
+        //AtomicReference<Long> value = new AtomicReference<>();
+        List<long[]> batches = dataUtils.getLongDelegation(offsetArr, threadPoolSize);
+        CountDownLatch latch = new CountDownLatch(batches.size());
+
+        for (long[] batch : batches) {
+            threadPool.submit(() -> {
+                dataUtils.writeToDatabase(dataSequence);
+            });
+        }
+
+        latch.await();
 
         dataStore.writeData();
     }
@@ -60,7 +67,7 @@ final class DataBridge {
         AtomicReference<Double> result = new AtomicReference<>(null);
         // TODO: test if it is faster to divide offsetArr in half and start one thread at each end
         long[] offsetArr = dataStore.getIdxLongArray(numIndices, 0);
-        List<long[]> batches = divideIntoBatches(offsetArr, threadPoolSize);
+        List<long[]> batches = dataUtils.getLongDelegation(offsetArr, threadPoolSize);
         CountDownLatch latch = new CountDownLatch(batches.size());
         for (long[] batch : batches) {
             threadPool.submit(() -> {
@@ -91,24 +98,5 @@ final class DataBridge {
 
     private long queryDB() {
         return 0L;
-    }
-
-    /**
-     * Divides offsets into relatively equivalent batches
-     *
-     * @param offsets Indices of stateKey in .dat
-     * @param threadPoolSize Number of threads we are using to parallel task
-     * @return Container of roughly equivalent sized offsets
-     */
-    private List<long[]> divideIntoBatches(long[] offsets, int threadPoolSize) {
-        List<long[]> batches = new ArrayList<>();
-        int numIndices = offsets.length;
-        int batchSize = (numIndices + threadPoolSize - 1) / threadPoolSize;
-
-        for (int i = 0; i < numIndices; i += batchSize) {
-            int end = Math.min(i + batchSize, numIndices);
-            batches.add(Arrays.copyOfRange(offsets, i, end));
-        }
-        return batches;
     }
 }

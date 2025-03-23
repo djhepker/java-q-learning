@@ -44,9 +44,9 @@ final class Database {
      *
      * @throws IOException Failed to instantiate Database file
      */
-    Database(ByteBufferPool bufferArg) throws IOException {
+    Database() throws IOException {
         this.isInitialized = new AtomicBoolean(false);
-        this.bufferPool = bufferArg;
+        this.bufferPool = new ByteBufferPool(10);
         initializeDatabase();
     }
 

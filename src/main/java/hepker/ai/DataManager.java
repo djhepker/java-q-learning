@@ -24,7 +24,7 @@ final class DataManager {
         this.dataArray = new DataArray(batchSize);
         DataBridge tmpB;
         try {
-            tmpB = new DataBridge(new ByteBufferPool(10));
+            tmpB = new DataBridge();
             LOGGER.info("Initialized Database Successfully");
         } catch (Exception e) {
             String errorMessage = "DataManager Failed to Initialize Database";
@@ -135,11 +135,10 @@ final class DataManager {
      */
     void pushData() {
         try {
-            bridge.writeValue(dataArray.flushCache());
-        } catch (IOException e) {
+            bridge.writeCache(dataArray.getCachedBytes(), dataArray.getCacheIndices());
+        } catch (Exception e) {
             String errorMessage = "Failed to Push Data";
             LOGGER.error(errorMessage, e);
-            throw new RuntimeException(errorMessage, e);
         }
     }
 
@@ -159,10 +158,13 @@ final class DataManager {
      */
     private class DataArray {
         private byte[] data;
+        private int[] cacheIndex;
         private int cacheSize = 0;
+        private int numIndices = 0;
 
         DataArray(int initialCapacity) {
             data = new byte[initialCapacity];
+            cacheIndex = new int[initialCapacity / 100];
         }
 
         /**
@@ -179,7 +181,13 @@ final class DataManager {
                 System.arraycopy(data, 0, newData, 0, cacheSnapshot);
                 data = newData;
             }
+            if (++numIndices >= cacheIndex.length) {
+                int[] newCacheIndex = new int[cacheIndex.length * 2];
+                System.arraycopy(cacheIndex, 0, newCacheIndex, 0, cacheIndex.length);
+                cacheIndex = newCacheIndex;
+            }
             System.arraycopy(byteSequence, 0, data, cacheSnapshot, sequenceLength);
+            cacheIndex[numIndices] = sequenceLength; // first index is obviously zero
         }
 
         /**
@@ -192,11 +200,24 @@ final class DataManager {
         }
 
         /**
+         * Getter for cache indices
+         *
+         * @return int[] of cache indices
+         */
+        int[] getCacheIndices() {
+            int[] exportIndices = new int[numIndices];
+            System.arraycopy(cacheIndex, 0, exportIndices, 0, numIndices);
+            data = new byte[batchSize / 100];
+            numIndices = 0;
+            return exportIndices;
+        }
+
+        /**
          * Retrieves and empties cash reserves of DataArray. member byte[] is emptied, reset to batchSize
          *
          * @return bytes queued to be written to .dat file
          */
-        byte[] flushCache() {
+        byte[] getCachedBytes() {
             byte[] exportBytes = new byte[cacheSize];
             System.arraycopy(data, 0, exportBytes, 0, cacheSize);
             data = new byte[batchSize];
