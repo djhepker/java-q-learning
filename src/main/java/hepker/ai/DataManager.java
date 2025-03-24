@@ -93,7 +93,8 @@ final class DataManager {
 
     /**
      * Queues up data for addition to the database. Stored as a singly linked-list. String stateKey must not exceed
-     * a length of 100 characters. Will throw a RuntimeException in such a case
+     * a length of 100 characters. Will throw a RuntimeException in such a case<br>
+     * [short keyLength][String stateKey][short actionIndex][double value]
      *
      * @param stateKey String representation of world state
      * @param actionIndex Chosen action in given world state
@@ -109,7 +110,7 @@ final class DataManager {
 
     /**
      * Converts data to a byte[]<br>
-     * [short keyLength][String stateKey][action index][double value]
+     * [short keyLength][String stateKey][short actionIndex][double value]
      *
      * @param actionIndex Chosen action in given world state
      * @param stateKey String representation of world state
@@ -132,11 +133,12 @@ final class DataManager {
     }
 
     /**
-     * Pushes all queued data to the database, eliminating cached bytes
+     * Pushes all queued data to the database, eliminating cached bytes<br>
+     * [short keyLength][String stateKey][short actionIndex][double value]
      */
     void pushData() {
         try {
-            bridge.writeCache(dataArray.getCachedBytes(), dataArray.getCacheIndices());
+            bridge.writeData(dataArray.getCachedBytes(), dataArray.getCacheIndices());
         } catch (Exception e) {
             String errorMessage = "Failed to Push Data";
             LOGGER.error(errorMessage, e);
@@ -170,6 +172,7 @@ final class DataManager {
 
         /**
          * Adds bytes to the data[] for writing
+         *
          *
          * @param byteSequence Bytes to be written to .dat file
          */

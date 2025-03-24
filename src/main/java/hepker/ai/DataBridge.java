@@ -30,25 +30,21 @@ final class DataBridge {
     }
 
     /**
-     * Handles parallel processing for writing (keylength, stateKey, action index, value, in that order)<br>
-     * .idx is [int numKeys][int numInvalid][short keySize][long keyIndex]
+     * Handles parallel processing for writing<br>
+     * .idx is [int numKeys][int numInvalid][short keySize][long keyIndex]<br>
+     * .dat is [String stateKey][short actionIndex][double value]<br>
      *
-     * @param dataSequence Queued data to be written to .dat file
+     * @param dataSequence Queued data to be written to .dat file<br>
+     *                     [short keyLength][String stateKey][short actionIndex][double value]
      * @throws IOException If an I/O error occurs
      */
-    void writeCache(byte[] dataSequence, int[] dataIndices) throws IOException, InterruptedException {
+    void writeData(byte[] dataSequence, int[] dataIndices) throws IOException, InterruptedException {
         long[] offsetArr = dataStore.getIdxLongArray(dataStore.getIdxInt(0), 0);
-        //AtomicReference<Long> value = new AtomicReference<>();
-        List<long[]> batches = dataUtils.getLongDelegation(offsetArr, threadPoolSize);
-        CountDownLatch latch = new CountDownLatch(batches.size());
+        int numWrites = dataIndices.length;
 
-        for (long[] batch : batches) {
-            threadPool.submit(() -> {
-                dataUtils.writeToDatabase(dataSequence);
-            });
+        for (int i = 0; i < numWrites; i++) {
+
         }
-
-        latch.await();
 
         dataStore.writeData();
     }
