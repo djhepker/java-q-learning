@@ -16,11 +16,7 @@ import java.util.Random;
  *      - maxQPrime = 0.0 (This is updated by calculateMaxQPrime()).<br>
  */
 public final class Agent {
-    private static final DataManager Q_TABLE_MGR;
-
-    static {
-        Q_TABLE_MGR = new DataManager();
-    }
+    private static final DataManager DATA_MANAGER;
 
     private double gamma = 0.90;
     private double alpha = 0.82;
@@ -28,8 +24,11 @@ public final class Agent {
     private double rho = 0.0;
     private double currentQ = 0.0;
     private double maxQPrime = 0.0;
-
     private String stateKey;
+
+    static {
+        DATA_MANAGER = new DataManager();
+    }
 
     /**
      * Empty default constructor for a new Agent. Member variables are initialized prior.<br>
@@ -51,6 +50,15 @@ public final class Agent {
     }
 
     /**
+     * Specialized constructor for setting the exploration rate, epsilon, at initialization
+     *
+     * @param inputEpsilon The probability Agent will make a random move opposed to a move based on knowledge
+     */
+    public Agent(double inputEpsilon) {
+        this.epsilon = inputEpsilon;
+    }
+
+    /**
      * Queues State Action pair to be placed into SQLite table
      *
      * @param stateKeyPrime The post-action encrypted state. Be sure to update your stateKey, post
@@ -58,7 +66,7 @@ public final class Agent {
      * @param actionChoiceInt The index of the decision which resulted in stateKeyPrime. Should be
      *                        the return value of getActionInt()
      */
-    public void learn(String stateKeyPrime, int actionChoiceInt) {
+    public void processData(String stateKeyPrime, int actionChoiceInt) {
         calculateMaxQPrime(stateKeyPrime);
         updateQValue(actionChoiceInt);
     }
@@ -95,25 +103,36 @@ public final class Agent {
      * at the end of every episode
      */
     public static void pushQTableUpdate() {
-        Q_TABLE_MGR.updateData();
+        DATA_MANAGER.pushData();
     }
 
     /**
      * Safely closes the Agent's database. To complete Episode, call after pushQTableUpdate()
      */
     public static void closeDatabase() {
-        if (Q_TABLE_MGR != null) {
-            Q_TABLE_MGR.close();
+        if (DATA_MANAGER != null) {
+            DATA_MANAGER.close();
         }
     }
 
     /**
-     * Getter for retrieving the number of Q-values waiting to be stored into memory by pushQTableUpdate()
+     * Getter for retrieving the number of Q-values waiting to be stored into memory by pushQTableUpdate().
+     * Size is stored as a member variable int, which is incremented, decremented, and set to zero accordingly
      *
      * @return Number of values cached waiting to be stored
      */
-    public static int getCacheSize() {
-        return Q_TABLE_MGR.getQueuedValueCount();
+    public static int getDataCacheSize() {
+        return DATA_MANAGER.getCacheSize();
+    }
+
+    /**
+     * Sets the number of DataNodes allowed to be held in memory, waiting to be written to Database. When
+     * the number of nodes cached equals the batch size, the cache is automatically written to file
+     *
+     * @param cacheSize The number of data nodes which will be written to file per batch
+     */
+    public static void setCacheBatchSize(int cacheSize) {
+        DATA_MANAGER.setBatchSize(cacheSize);
     }
 
     /**
@@ -188,7 +207,7 @@ public final class Agent {
      *
      * @param updatedRho the new updatedRho value.
      */
-    public void setRho(double updatedRho) {
+    public void giveReward(double updatedRho) {
         this.rho = updatedRho;
     }
 
@@ -220,7 +239,7 @@ public final class Agent {
         if (epsilon == 0.0) {
             return;
         }
-        this.maxQPrime = Q_TABLE_MGR.getMaxQValue(stateKeyPrimeString);
+        this.maxQPrime = DATA_MANAGER.getMaxQValue(stateKeyPrimeString);
     }
 
     /**
@@ -230,7 +249,7 @@ public final class Agent {
      * @return int index of the best-known action in the given state
      */
     private int exploit() {
-        return Q_TABLE_MGR.getMaxQIndex(stateKey);
+        return DATA_MANAGER.getMaxQIndex(stateKey);
     }
 
     /**
@@ -251,7 +270,7 @@ public final class Agent {
      * @return q-value of the given action in the given state
      */
     private double getQValue(String inputStateKey, int actionInt) {
-        return Q_TABLE_MGR.queryQTableForValue(inputStateKey, actionInt);
+        return DATA_MANAGER.queryQTableForValue(inputStateKey, actionInt);
     }
 
     /**
@@ -262,7 +281,7 @@ public final class Agent {
     private void updateQValue(int actionInt) {
         double updatedQ = currentQ + alpha * (rho + gamma * maxQPrime - currentQ);
         if (Math.abs(updatedQ - currentQ) > 0.01) {
-            Q_TABLE_MGR.putUpdatedValue(stateKey, actionInt, updatedQ);
+            DATA_MANAGER.queueDataToCache(stateKey, actionInt, updatedQ);
         }
     }
 }
