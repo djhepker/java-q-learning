@@ -6,10 +6,8 @@
 
     <modelVersion>4.0.0</modelVersion>
 
-<!--     <groupId>io.github.djhepker</groupId>
-    <artifactId>com.hepker.jql</artifactId> -->
-        <groupId>com.hepker</groupId>
-        <artifactId>jql</artifactId>
+    <groupId>io.github.djhepker</groupId>
+    <artifactId>jql</artifactId>
     <description>User-friendly Agent integration. Allows creation of AI Agents for Q-learning.
         Comes with Database logic for Q-value storage.</description>
 
