@@ -13,7 +13,7 @@
     <description>User-friendly Agent integration. Allows creation of AI Agents for Q-learning.
         Comes with Database logic for Q-value storage.</description>
 
-    <version>v0.3.3</version>
+    <version>0.4.0</version>
     <packaging>jar</packaging>
     <name>Java Q-learning</name>
     <url>https://github.com/djhepker/java-q-learning.git</url>
