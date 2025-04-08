@@ -6,6 +6,8 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Handles all interaction between Agent and SQLite.
@@ -16,8 +18,10 @@ final class DataManager {
     private static int batchSize = 100;
 
     private final ConcurrentHashMap<String, double[]> updatedQValues;
+    private final ReentrantLock reentrantLock;
+    private final AtomicBoolean isShuttingDown;
     private final QValueRepository db;
-    private final double FAILURE_RETURN_VALUE = 0.0;
+    private final double FAILURE_RETURN_VALUE;
 
     /**
      * Constructor which is exclusively called by Agent's static instantiation. Safely instantiates a
@@ -34,6 +38,9 @@ final class DataManager {
         }
         this.db = tempDb;
         this.updatedQValues = new ConcurrentHashMap<>();
+        this.isShuttingDown = new AtomicBoolean(false);
+        this.reentrantLock = new ReentrantLock();
+        this.FAILURE_RETURN_VALUE = 0.0;
     }
 
     /**
@@ -92,6 +99,10 @@ final class DataManager {
      * @param inputQ The resulting Q-value of performing actionIndex in state serialKey
      */
     void queueDataToCache(String serialKey, int actionIndex, double inputQ) {
+        if (isShuttingDown.get()) {
+            LOGGER.warn("Attempted to queue data after shutdown initiated.");
+            return;
+        }
         updatedQValues.compute(serialKey, (key, existingArray) -> {
             double[] resultArray;
             if (existingArray == null) {
@@ -131,6 +142,7 @@ final class DataManager {
      * Flushes queued values to the database
      */
     void pushData() {
+        reentrantLock.lock();
         try {
             Map<String, double[]> snapshot = new ConcurrentHashMap<>(updatedQValues);
             if (!snapshot.isEmpty()) {
@@ -140,6 +152,8 @@ final class DataManager {
             }
         } catch (SQLException e) {
             LOGGER.error("Failed to update QTable with {} entries", updatedQValues.size(), e);
+        } finally {
+            reentrantLock.unlock();
         }
     }
 
@@ -147,11 +161,15 @@ final class DataManager {
      * Closes the database. Call once all reads and writes have been finalized
      */
     void close() {
+        isShuttingDown.set(true);
+        reentrantLock.lock();
         try {
             db.close();
             LOGGER.info("Database connection closed");
         } catch (SQLException e) {
             LOGGER.error("Failed to close database connection", e);
+        } finally {
+            reentrantLock.unlock();
         }
     }
 }
