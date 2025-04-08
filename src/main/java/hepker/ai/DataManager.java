@@ -6,17 +6,22 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Handles all interaction between Agent and SQLite.
  */
 final class DataManager {
     private static final Logger LOGGER = LoggerFactory.getLogger(DataManager.class);
-    private static final String SQLKEY = "jdbc:sqlite:src/main/resources/data/q_values.db";
-    private static final double FAILURE_RETURN_VALUE = 0.0;
+    private static final String SQL_KEY = "jdbc:sqlite:src/main/resources/data/q_values.db";
+    private static int batchSize = 100;
 
     private final ConcurrentHashMap<String, double[]> updatedQValues;
+    private final ReentrantLock reentrantLock;
+    private final AtomicBoolean isShuttingDown;
     private final QValueRepository db;
+    private final double FAILURE_RETURN_VALUE;
 
     /**
      * Constructor which is exclusively called by Agent's static instantiation. Safely instantiates a
@@ -25,14 +30,17 @@ final class DataManager {
     DataManager() {
         QValueRepository tempDb;
         try {
-            tempDb = new QValueRepository(SQLKEY);
-            LOGGER.info("Initialized QValueRepository with URL: {}", SQLKEY);
+            tempDb = new QValueRepository(SQL_KEY);
+            LOGGER.info("Initialized QValueRepository with URL: {}", SQL_KEY);
         } catch (SQLException e) {
-            LOGGER.error("Failed to initialize QValueRepository with URL: {}", SQLKEY, e);
+            LOGGER.error("Failed to initialize QValueRepository with URL: {}", SQL_KEY, e);
             throw new RuntimeException("Database initialization failed", e);
         }
         this.db = tempDb;
         this.updatedQValues = new ConcurrentHashMap<>();
+        this.isShuttingDown = new AtomicBoolean(false);
+        this.reentrantLock = new ReentrantLock();
+        this.FAILURE_RETURN_VALUE = 0.0;
     }
 
     /**
@@ -90,7 +98,11 @@ final class DataManager {
      * @param actionIndex Index of Action given Agent's state
      * @param inputQ The resulting Q-value of performing actionIndex in state serialKey
      */
-    void putUpdatedValue(String serialKey, int actionIndex, double inputQ) {
+    void queueDataToCache(String serialKey, int actionIndex, double inputQ) {
+        if (isShuttingDown.get()) {
+            LOGGER.warn("Attempted to queue data after shutdown initiated.");
+            return;
+        }
         updatedQValues.compute(serialKey, (key, existingArray) -> {
             double[] resultArray;
             if (existingArray == null) {
@@ -103,6 +115,9 @@ final class DataManager {
             resultArray[actionIndex] = inputQ;
             return resultArray;
         });
+        if (updatedQValues.size() >= batchSize) {
+            pushData();
+        }
     }
 
     /**
@@ -110,14 +125,24 @@ final class DataManager {
      *
      * @return updatedQValues.size()
      */
-    int getQueuedValueCount() {
+    int getCacheSize() {
         return updatedQValues.size();
+    }
+
+    /**
+     * Sets the value at which cache is automatically written to Q-database
+     *
+     * @param argBatchSize When updatedQValues.size() == batchSize, data is written to database
+     */
+    void setBatchSize(int argBatchSize) {
+        batchSize = argBatchSize;
     }
 
     /**
      * Flushes queued values to the database
      */
-    void updateData() {
+    void pushData() {
+        reentrantLock.lock();
         try {
             Map<String, double[]> snapshot = new ConcurrentHashMap<>(updatedQValues);
             if (!snapshot.isEmpty()) {
@@ -127,6 +152,8 @@ final class DataManager {
             }
         } catch (SQLException e) {
             LOGGER.error("Failed to update QTable with {} entries", updatedQValues.size(), e);
+        } finally {
+            reentrantLock.unlock();
         }
     }
 
@@ -134,11 +161,15 @@ final class DataManager {
      * Closes the database. Call once all reads and writes have been finalized
      */
     void close() {
+        isShuttingDown.set(true);
+        reentrantLock.lock();
         try {
             db.close();
             LOGGER.info("Database connection closed");
         } catch (SQLException e) {
             LOGGER.error("Failed to close database connection", e);
+        } finally {
+            reentrantLock.unlock();
         }
     }
 }
